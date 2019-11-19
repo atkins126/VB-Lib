@@ -47,7 +47,7 @@ type
 //    procedure GetData(ID: Integer; DataSet: TFDMemTable; DataSetName, ParameterList, FileName: string);
 
 //    function GetDelta(DataSetArray: TDataSetArray): TFDJSONDeltas;
-    procedure ApplyUpdates(DataSetArray: TDataSetArray; Generatorname, Tablename: string);
+    procedure ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string);
     procedure CancelUpdates(DataSetArray: TDataSetArray);
     function ExecuteSQLCommand(Request: string): string;
     function ExecuteStoredProcedure(ProcedureName, ParameterList: string): string;
@@ -241,7 +241,7 @@ end;
 //  end;
 //end;
 
-procedure TVBBaseDM.ApplyUpdates(DataSetArray: TDataSetArray; Generatorname, Tablename: string);
+procedure TVBBaseDM.ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string);
 var
   DeltaList: TFDJSONDeltas;
   Response: string;
@@ -250,7 +250,7 @@ begin
   Response := '';
   DeltaList := GetDelta(DataSetArray);
   try
-    FServerErrorMsg := FClient.ApplyDataUpdates(DeltaList, Response, Generatorname, Tablename);
+    FServerErrorMsg := FClient.ApplyDataUpdates(DeltaList, Response, GeneratorName, TableName);
     // Do we need to do this????
 //    for I := 0 to Length(DataSetArray) - 1 do
 //      DataSetArray[I].CancelUpdates;
