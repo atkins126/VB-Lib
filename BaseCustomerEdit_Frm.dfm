@@ -29,7 +29,6 @@ inherited BaseCustomerEditFrm: TBaseCustomerEditFrm
       Height = 25
       Caption = 'OK'
       Default = True
-      ModalResult = 1
       ParentShowHint = False
       ShowHint = True
       TabOrder = 4

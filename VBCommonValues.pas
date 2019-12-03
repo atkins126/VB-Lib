@@ -53,8 +53,8 @@ const
   LongMonths: array[1..12] of string = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December');
   ShortMonths: array[1..12] of string = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec');
 
-  EKEY1 = 537614;
-  EKEY2 = 326185;
+  EKEY1 = 5376149;
+  EKEY2 = 3261854;
 
   // XML Formatt specifiers
   EMPTY_STRING = '';
@@ -97,7 +97,7 @@ const
   KEY_TCP = KEY_COMMON + '\TCP';
   KEY_EXTERNAL_FILE_ACCESS = KEY_COMMON_ROOT + '\External File Access';
   KEY_VB_APPS = KEY_COMMON + '\VB Apps';
-  // DataSnap constants
+  KEY_TIME_SHEET = KEY_COMMON_ROOT + '\Timesheet';
 
   APPLICATION_FOLDER = 'C:\Apps\VB\';
   ROOT_FOLDER = 'C:\Data\VB\';
@@ -159,6 +159,7 @@ const
   WM_RESTORE_APP = WM_USER + 503;
   WM_APP_READY = WM_USER + 504;
   WM_APP_CLOSED = WM_USER + 505;
+  WM_STATE_CHANGE = WM_USER + 506;
 
 //-------------------    SQL Server Errror Messages     ------------------------
 { Error No  Severity Message

@@ -43,11 +43,9 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
   private
-//    FCustomer: TCustomerDetail;
     { Private declarations }
   public
     { Public declarations }
-//    property Customer: TCustomerDetail read FCustomer write FCustomer;
   end;
 
 var
@@ -60,18 +58,22 @@ implementation
 
 {$R *.dfm}
 
-uses MT_DM;
+uses
+  MT_DM,
+  VBBase_DM;
 
 procedure TBaseCustomerEditFrm.FormCreate(Sender: TObject);
 begin
   inherited;
-  Caption :=  MTDM.FormCaption;
-  lblSubTitle.DataBinding.DataSource :=  MTDM.dtsCustomer;
+  Caption := MTDM.FormCaption;
+  lblHeaderTitle.Caption := MTDM.HeaderCaptionArray[MTDM.DetailIndex];
+  lblSubTitle.DataBinding.DataSource := MTDM.dtsCustomer;
   styHeaderFont.Style.Font.Color := cxLookAndFeels.RootLookAndFeel.SkinPainter.DefaultContentTextColor;
   styHeaderFont.Style.TextColor := cxLookAndFeels.RootLookAndFeel.SkinPainter.DefaultContentTextColor;
   stySubTitle.Style.Font.Color := cxLookAndFeels.RootLookAndFeel.SkinPainter.DefaultContentTextColor;
   stySubTitle.Style.TextColor := cxLookAndFeels.RootLookAndFeel.SkinPainter.DefaultContentTextColor;
   MTDM.ClearFieldValues;
+  VBBaseDM.MadeChanges := False;
 end;
 
 procedure TBaseCustomerEditFrm.FormShow(Sender: TObject);
@@ -81,3 +83,4 @@ begin
 end;
 
 end.
+

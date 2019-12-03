@@ -61,18 +61,17 @@ type
     FShellResource: TShellResource;
     FClient: TVBServerMethodsClient;
     FFServerErrorMsg: string;
-    FUserData: TUserData;
     FCurrentPeriod: Integer;
     FCurrentMonth: Integer;
     FMadeChanges: Boolean;
   public
     { Public declarations }
     FDataSetArray: TDataSetArray;
+    FUserData: TUserData;
 
     property ShellResource: TShellResource read FShellResource write FShellResource;
     property Client: TVBServerMethodsClient read FClient write FClient;
     property FServerErrorMsg: string read FFServerErrorMsg write FFServerErrorMsg;
-    property UserData: TUserData read FUserData write FUserData;
     property CurrentPeriod: Integer read FCurrentPeriod write FCurrentPeriod;
     property CurrentMonth: Integer read FCurrentMonth write FCurrentMonth;
     property MadeChanges: Boolean read FMadeChanges write FMadeChanges;
