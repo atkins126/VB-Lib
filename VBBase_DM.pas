@@ -41,10 +41,9 @@ type
     function GetShellResource: TShellResource;
     function GetDateOrder(const DateFormat: string): TDateOrder;
     function UpdatesPending(DataSetArray: TDataSetArray): Boolean;
-//    function GetMasterData(DataRequestList, ParameterList: TJSONObject{string}): TFDJSONDataSets;
     function GetMasterData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName: string): TFDJSONDataSets;
     procedure GetData(ID: Integer; DataSet: TFDMemTable; DataSetName, ParameterList, FileName, Generatorname, Tablename: string);
-//    procedure GetData(ID: Integer; DataSet: TFDMemTable; DataSetName, ParameterList, FileName: string);
+    function GetNextID(TableName: string): Integer;
 
 //    function GetDelta(DataSetArray: TDataSetArray): TFDJSONDeltas;
     procedure ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string);
@@ -143,6 +142,11 @@ begin
 {$IFDEF DEBUG}
   DataSet.SaveToFile(FileName, sfXML);
 {$ENDIF}
+end;
+
+function TVBBaseDM.GetNextID(TableName: string): Integer;
+begin
+  Result := StrToInt(FClient.GetNextID(Tablename));
 end;
 
 function TVBBaseDM.GetMasterData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName: string): TFDJSONDataSets;
