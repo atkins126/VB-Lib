@@ -7,7 +7,7 @@ uses
   System.Win.Registry, System.ImageList, Vcl.ImgList, Vcl.Controls,
   Winapi.Windows, System.IOUtils,
 
-  VBProxyClass, Base_DM,
+  VBProxyClass, Base_DM, CommonValues,
 
   Data.SqlExpr, Data.FireDACJSONReflect, DataSnap.DSCommon, IPPeerClient,
 
@@ -63,6 +63,7 @@ type
     FCurrentPeriod: Integer;
     FCurrentMonth: Integer;
     FMadeChanges: Boolean;
+    FDBAction: TDBActions;
   public
     { Public declarations }
     FDataSetArray: TDataSetArray;
@@ -74,6 +75,7 @@ type
     property CurrentPeriod: Integer read FCurrentPeriod write FCurrentPeriod;
     property CurrentMonth: Integer read FCurrentMonth write FCurrentMonth;
     property MadeChanges: Boolean read FMadeChanges write FMadeChanges;
+    property DBAction: TDBActions read FDBAction write FDBAction;
   end;
 
 var

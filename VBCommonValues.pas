@@ -31,12 +31,10 @@ type
   TUserRights = 1..255;
   TUserRightSet = set of TUserRights;
   TZCompressionLevel = (zcNone, zcFastest, zcDefault, zcMax);
-//  TDBActions = (acInsert, acModify, acDelete);
 //  TKitStoreTransactionTypes = (ttReceiving, ttIssuing, ttReturn, ttCancel, ttBinTransfer);
   TFileExtensions = (xls, xlsx, doc, docx, mdb, accdb, pdf, jpg, png, Bitmap, bmp);
 
 var
-//  DBAction: TDBActions;
   FileExtension: TFileExtensions;
 
 {
