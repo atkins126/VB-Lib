@@ -10,11 +10,15 @@ uses
 type
   // Record to store user data
   TUserData = record
+    UserID: Integer;
     UserName: string; // Login name
+    FirstName: string;
+    lastName: string;
     EmailAddress: string; // Personal email address
     IDNO: string; // ID/Passport number
     ComputerName: string;
     IPAddress: string;
+    AccountEnabled: Boolean;
   end;
 
   TShellResource = record
@@ -31,8 +35,13 @@ type
   TUserRights = 1..255;
   TUserRightSet = set of TUserRights;
   TZCompressionLevel = (zcNone, zcFastest, zcDefault, zcMax);
-//  TKitStoreTransactionTypes = (ttReceiving, ttIssuing, ttReturn, ttCancel, ttBinTransfer);
+//  TApprovalActions = (apApprove, apUnApprove, apToggleApproval);
+//  TBillableActions = (abBillable, abNotBillable, abToggleBillable);
   TFileExtensions = (xls, xlsx, doc, docx, mdb, accdb, pdf, jpg, png, Bitmap, bmp);
+  TMasterFormTypes = (ftActivityType, ftAgePeriod, ftBankAccountType, ftBank,
+    ftContactType, ftCountry, ftCustomerGroup, ftCustomerStatus, ftCustomerType,
+    ftJobFunction, ftMonthOfYear, ftRateUnit, ftSalutation, ftStdActivity, ftTaxoffice,
+    ftVehicleMake);
 
 var
   FileExtension: TFileExtensions;
@@ -178,7 +187,48 @@ const
 
   //----------------------------------------------------------------------------
 
+  PRICE_HISTORY_CLAUSE =
+    ' (SELECT' +
+    '  H.RATE AS %s' +
+    ' FROM' +
+    '  PRICE_HISTORY H' +
+    ' WHERE' +
+    '  H.THE_YEAR = %s' +
+    '  AND H.PRICE_LIST_ITEM_ID = P.ID' +
+    ' ) AS %s';
+
+  PRICE_HISTORY =
+    'SELECT' +
+    ' P.ID,' +
+    ' P.RATE_UNIT_ID,' +
+    ' P."NAME",' +
+    ' P.DESCRIPTION,' +
+    ' P.INVOICE_DESCRIPTION,' +
+    ' R."NAME" AS "RATE_UNIT",' +
+    ' %s' +
+    'FROM' +
+    ' PRICE_LIST P' +
+    'LEFT JOIN RATE_UNIT R' +
+    ' ON P.RATE_UNIT_ID = R.ID' +
+    'ORDER BY' +
+    ' P."NAME"';
+
 implementation
 
 end.
+
+SELECT
+P.ID,
+P.RATE_UNIT_ID,
+P."NAME",
+P.DESCRIPTION,
+P.INVOICE_DESCRIPTION,
+R."NAME" as "RATE_UNIT",
+%s
+FROM
+PRICE_LIST P
+LEFT JOIN RATE_UNIT R
+on P.RATE_UNIT_ID = R.ID
+  ORDER BY
+  P."NAME"
 

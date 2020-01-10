@@ -5,19 +5,22 @@ interface
 uses
   System.SysUtils, System.Classes, Data.DBXDataSnap, Data.DBXCommon, Data.DB,
   System.Win.Registry, System.ImageList, Vcl.ImgList, Vcl.Controls,
-  Winapi.Windows, System.IOUtils,
+  Winapi.Windows, System.IOUtils, System.Variants,
 
   VBProxyClass, Base_DM, CommonValues,
 
   Data.SqlExpr, Data.FireDACJSONReflect, DataSnap.DSCommon, IPPeerClient,
 
   FireDAC.Stan.StorageXML, FireDAC.Stan.StorageJSON, FireDAC.Stan.StorageBin,
-  FireDAC.Comp.Client, FireDAC.Stan.Intf;
+  FireDAC.Comp.Client, FireDAC.Stan.Intf, FireDAC.Stan.Option,
+  FireDAC.Stan.Param, FireDAC.Stan.Error, FireDAC.DatS, FireDAC.Phys.Intf,
+  FireDAC.DApt.Intf, FireDAC.Comp.DataSet;
 
 type
   TShellResource = record
     RootFolder: string;
     ResourceFolder: string;
+    ReportFolder: String;
     SkinName: string;
     RemoteServerName: string;
     ConnectionDefinitionFileLocation: string;
@@ -44,6 +47,8 @@ type
     function GetMasterData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName: string): TFDJSONDataSets;
     procedure GetData(ID: Integer; DataSet: TFDMemTable; DataSetName, ParameterList, FileName, Generatorname, Tablename: string);
     function GetNextID(TableName: string): Integer;
+    procedure PopulateUserData;
+    function CopyRecord(DataSet: TFDMemTable): OleVariant;
 
 //    function GetDelta(DataSetArray: TDataSetArray): TFDJSONDeltas;
     procedure ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string);
@@ -195,6 +200,7 @@ begin
 //      RegKey.WriteString('Resource', '\\VBSERVER\Apps\VB\');
 
     Result.ResourceFolder := RegKey.ReadString('Resource');
+    Result.ReportFolder := RegKey.ReadString('Reports');
 
     RegKey.CloseKey;
     RegKey.OpenKey(KEY_DATABASE, True);
@@ -211,6 +217,25 @@ begin
     RegKey.CloseKey;
   finally
     RegKey.Free;
+  end;
+end;
+
+procedure TVBBaseDM.PopulateUserData;
+var
+  RegKey: TRegistry;
+begin
+  RegKey := TRegistry.Create(KEY_ALL_ACCESS or KEY_WRITE or KEY_WOW64_64KEY);
+  try
+    RegKey.RootKey := HKEY_CURRENT_USER;
+    Regkey.OpenKey(KEY_USER_DATA, True);
+    FUserData.UserID := RegKey.ReadInteger('User ID');
+    FUserData.UserName := RegKey.ReadString('User Name');
+    FUserData.FirstName := RegKey.ReadString('First Name');
+    FUserData.LastName := RegKey.ReadString('Last Name');
+    FUserData.EmailAddress := RegKey.ReadString('Email Address');
+    FUserData.AccountEnabled := RegKey.ReadBool('Account Enabled');
+  finally
+    RegKey.Free
   end;
 end;
 
@@ -275,6 +300,34 @@ begin
 //    if DataSetArray[I].UpdatesPending then
 //      DataSetArray[I].CancelUpdates;
 //  end;
+end;
+
+function TVBBaseDM.CopyRecord(DataSet: TFDMemTable): OleVariant;
+var
+  I: Integer;
+  CDS: TFDMemTable;
+  FieldName: string;
+begin
+  CDS := TFDMemTable.Create(nil);
+  try
+    CDS.FieldDefs.Assign(DataSet.FieldDefs);
+    CDS.CreateDataSet;
+    CDS.Open;
+    CDS.Append;
+
+    for I := 0 to DataSet.FieldCount - 1 do
+    begin
+      FieldName := DataSet.Fields[I].FieldName;
+      if VarIsNull(DataSet.Fields[I].Value) then
+        CDS.Fields[I].Value := null
+      else
+        CDS.FieldByName(FieldName).Value := DataSet.FieldByName(FieldName).Value;
+    end;
+    CDS.Post;
+    Result := CDS.Data;
+  finally
+    CDS.Free;
+  end;
 end;
 
 function TVBBaseDM.ExecuteSQLCommand(Request: string): string;
