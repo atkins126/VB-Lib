@@ -81,7 +81,7 @@ const
   DOUBLE_ESCAPE_CHAR = '\\';
   ALL_FILES_MASK = '*.*';
   // Drawing borders around grid cell.
-  CM_DRAWBORDER = WM_APP + 300;
+  DRAW_CELL_BORDER = WM_APP + 300;
 
 // Genrate case insensitive queries in SQL Server.
   SQL_COLLATE = ' COLLATE SQL_Latin1_General_CP1_CI_AS ';
@@ -105,6 +105,7 @@ const
   KEY_EXTERNAL_FILE_ACCESS = KEY_COMMON_ROOT + '\External File Access';
   KEY_VB_APPS = KEY_COMMON + '\VB Apps';
   KEY_TIME_SHEET = KEY_COMMON_ROOT + '\Timesheet';
+  KEY_MASTER_TABLE_MANAGER = KEY_COMMON_ROOT + '\Master Table Manager';
 
   APPLICATION_FOLDER = 'C:\Apps\VB\';
   ROOT_FOLDER = 'C:\Data\VB\';
@@ -217,18 +218,4 @@ implementation
 
 end.
 
-SELECT
-P.ID,
-P.RATE_UNIT_ID,
-P."NAME",
-P.DESCRIPTION,
-P.INVOICE_DESCRIPTION,
-R."NAME" as "RATE_UNIT",
-%s
-FROM
-PRICE_LIST P
-LEFT JOIN RATE_UNIT R
-on P.RATE_UNIT_ID = R.ID
-  ORDER BY
-  P."NAME"
 
