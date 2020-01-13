@@ -20,7 +20,7 @@ type
   TShellResource = record
     RootFolder: string;
     ResourceFolder: string;
-    ReportFolder: String;
+    ReportFolder: string;
     SkinName: string;
     RemoteServerName: string;
     ConnectionDefinitionFileLocation: string;

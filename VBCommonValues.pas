@@ -38,9 +38,24 @@ type
 //  TApprovalActions = (apApprove, apUnApprove, apToggleApproval);
 //  TBillableActions = (abBillable, abNotBillable, abToggleBillable);
   TFileExtensions = (xls, xlsx, doc, docx, mdb, accdb, pdf, jpg, png, Bitmap, bmp);
-  TMasterFormTypes = (ftActivityType, ftAgePeriod, ftBankAccountType, ftBank,
-    ftContactType, ftCountry, ftCustomerGroup, ftCustomerStatus, ftCustomerType,
-    ftJobFunction, ftMonthOfYear, ftRateUnit, ftSalutation, ftStdActivity, ftTaxoffice,
+  TMasterFormTypes = (
+    ftActivityType,
+    ftAgePeriod,
+    ftBank,
+    ftBankAccountType,
+    ftContactType,
+    ftCountry,
+    ftCustomer,
+    ftCustomerGroup,
+    ftCustomerStatus,
+    ftCustomerType,
+    ftJobFunction,
+    ftMonthOfYear,
+    ftPricelist,
+    ftRateUnit,
+    ftSalutation,
+    ftStdActivity,
+    ftTaxoffice,
     ftVehicleMake);
 
 var
@@ -62,6 +77,8 @@ const
 
   EKEY1 = 5376149;
   EKEY2 = 3261854;
+
+  MASTER_DATASET_COUNT = 18;
 
   // XML Formatt specifiers
   EMPTY_STRING = '';
@@ -217,5 +234,4 @@ const
 implementation
 
 end.
-
 
