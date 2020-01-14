@@ -49,6 +49,7 @@ type
     function GetNextID(TableName: string): Integer;
     procedure PopulateUserData;
     function CopyRecord(DataSet: TFDMemTable): OleVariant;
+    function GetuseCount(Request: String): Integer;
 
 //    function GetDelta(DataSetArray: TDataSetArray): TFDJSONDeltas;
     procedure ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string);
@@ -69,6 +70,8 @@ type
     FCurrentMonth: Integer;
     FMadeChanges: Boolean;
     FDBAction: TDBActions;
+    FQueryRequest: String;
+    FItemToCount: String;
   public
     { Public declarations }
     FDataSetArray: TDataSetArray;
@@ -81,6 +84,8 @@ type
     property CurrentMonth: Integer read FCurrentMonth write FCurrentMonth;
     property MadeChanges: Boolean read FMadeChanges write FMadeChanges;
     property DBAction: TDBActions read FDBAction write FDBAction;
+    property QueryRequest: String read FQueryRequest write FQueryRequest;
+    property ItemToCount: String read FItemToCount write FItemToCount;
   end;
 
 var
@@ -154,6 +159,11 @@ end;
 function TVBBaseDM.GetNextID(TableName: string): Integer;
 begin
   Result := StrToInt(FClient.GetNextID(Tablename));
+end;
+
+function TVBBaseDM.GetuseCount(Request: String): Integer;
+begin
+  Result := StrToInt(FClient.GetUseCount(Request));
 end;
 
 function TVBBaseDM.GetMasterData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName: string): TFDJSONDataSets;
