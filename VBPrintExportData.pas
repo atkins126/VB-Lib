@@ -219,8 +219,12 @@ end;
 
 procedure TVBPrintExportData.PrintPreview;
 begin
-  FTargetDataSet.Close;
-  FTargetDataSet.Data := SourceDataSet.Data;
+//  if FSourceDataSet <> nil then
+//  begin
+//    FTargetDataSet.Close;
+//    FTargetDataSet.Data := SourceDataSet.Data;
+//  end;
+
   FReportDataSet.DataSet := TargetDataSet;
   FReport.DataSets.Clear;
   FReport.DataSets.Add(FReportDataSet);
