@@ -38,6 +38,8 @@ type
 //  TApprovalActions = (apApprove, apUnApprove, apToggleApproval);
 //  TBillableActions = (abBillable, abNotBillable, abToggleBillable);
   TFileExtensions = (xls, xlsx, doc, docx, mdb, accdb, pdf, jpg, png, Bitmap, bmp);
+  MasterReportDataSets = array of string;
+
   TMasterFormTypes = (
     ftActivityType,
     ftAgePeriod,

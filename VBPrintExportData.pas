@@ -155,12 +155,13 @@ var
   DestFolder: string;
 begin
   inherited;
-  FTargetDataSet.Close;
-  FTargetDataSet.Data := SourceDataSet.Data;
+//  FTargetDataSet.Close;
+//  FTargetDataSet.Data := SourceDataSet.Data;
   FReportDataSet.DataSet := TargetDataSet;
   FReport.DataSets.Clear;
   FReport.DataSets.Add(FReportDataSet);
-  FReport.LoadFromFile(ReportFileName, False);
+  if FReportDataSet.Name <> 'fdsPriceHistory' then
+    FReport.LoadFromFile(ReportFileName, False);
   TfrxMemoView(Report.FindObject('lblReportTypeName')).Text := FReportTypeName;
 
   FPDFExport.ShowDialog := False;
@@ -228,7 +229,8 @@ begin
   FReportDataSet.DataSet := TargetDataSet;
   FReport.DataSets.Clear;
   FReport.DataSets.Add(FReportDataSet);
-  FReport.LoadFromFile(ReportFileName, False);
+  if FReportDataSet.Name <> 'fdsPriceHistory' then
+    FReport.LoadFromFile(ReportFileName, False);
   TfrxMemoView(Report.FindObject('lblReportTypeName')).Text := FReportTypeName;
 
   case FReportAction of
