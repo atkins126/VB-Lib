@@ -44,8 +44,10 @@ type
     procedure FormShow(Sender: TObject);
   private
     { Private declarations }
+    FValidationError: Boolean;
   public
     { Public declarations }
+    property ValidationError: Boolean read FValidationError write FValidationError;
   end;
 
 var
