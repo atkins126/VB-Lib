@@ -38,6 +38,22 @@ type
 //  TApprovalActions = (apApprove, apUnApprove, apToggleApproval);
 //  TBillableActions = (abBillable, abNotBillable, abToggleBillable);
   TFileExtensions = (xls, xlsx, doc, docx, mdb, accdb, pdf, jpg, png, Bitmap, bmp);
+
+  TCustomerLinkDataset = (
+    ldsContactDetailCo,
+    ldsAddress,
+    ldsContactPerson,
+    ldsContactDetailPerson,
+    ldsBankingDetail,
+    ldsDirector,
+    ldsBeneficiary,
+    ldsTrustee,
+    ldsShareHolder,
+    ldsHeir,
+    ldsVehicle,
+    ldsDirectorOfCompany,
+    ldsCustomer);
+
   MasterReportDataSets = array of string;
 
   TMasterFormTypes = (
@@ -187,6 +203,7 @@ const
   WM_APP_READY = WM_USER + 504;
   WM_APP_CLOSED = WM_USER + 505;
   WM_STATE_CHANGE = WM_USER + 506;
+  WM_DOWNLOAD_PROGRESS = WM_USER + 507;
 
 //-------------------    SQL Server Errror Messages     ------------------------
 { Error No  Severity Message

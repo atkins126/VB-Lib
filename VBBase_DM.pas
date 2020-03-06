@@ -3,18 +3,20 @@ unit VBBase_DM;
 interface
 
 uses
-  System.SysUtils, System.Classes, Data.DBXDataSnap, Data.DBXCommon, Data.DB,
-  System.Win.Registry, System.ImageList, Vcl.ImgList, Vcl.Controls,
-  Winapi.Windows, System.IOUtils, System.Variants,
+  System.SysUtils, System.Classes, Data.DBXDataSnap, Data.DBXCommon, Vcl.Forms,
+  Vcl.Controls, System.Win.Registry, System.ImageList, Vcl.ImgList, Winapi.Windows,
+  System.IOUtils, System.Variants, System.DateUtils,
 
-  VBProxyClass, Base_DM, CommonValues,
+  VBProxyClass, Base_DM, CommonValues, VBCommonValues,
 
-  Data.SqlExpr, Data.FireDACJSONReflect, DataSnap.DSCommon, IPPeerClient,
+  Data.DB, Data.SqlExpr, Data.FireDACJSONReflect, DataSnap.DSCommon, IPPeerClient,
 
   FireDAC.Stan.StorageXML, FireDAC.Stan.StorageJSON, FireDAC.Stan.StorageBin,
   FireDAC.Comp.Client, FireDAC.Stan.Intf, FireDAC.Stan.Option,
   FireDAC.Stan.Param, FireDAC.Stan.Error, FireDAC.DatS, FireDAC.Phys.Intf,
-  FireDAC.DApt.Intf, FireDAC.Comp.DataSet;
+  FireDAC.DApt.Intf, FireDAC.Comp.DataSet, FireDAC.UI.Intf, FireDAC.VCLUI.Wait,
+  FireDAC.Phys.DSDef, FireDAC.Phys, FireDAC.Phys.TDBXBase, FireDAC.Phys.DS,
+  FireDAC.Comp.UI;
 
 type
   TShellResource = record
@@ -40,6 +42,15 @@ type
   end;
 
   TVBBaseDM = class(TBaseDM)
+    cdsRepository: TFDMemTable;
+    dtsRepository: TDataSource;
+    cdsRepositoryID: TIntegerField;
+    cdsRepositoryAPP_ID: TIntegerField;
+    cdsRepositorySOURCE_FOLDER: TStringField;
+    cdsRepositoryDEST_FOLDER: TStringField;
+    cdsRepositoryFILE_NAME: TStringField;
+    cdsRepositoryUPDATE_FILE: TIntegerField;
+    cdsRepositoryDELETE_FILE: TIntegerField;
     procedure SetConnectionProperties;
     function GetShellResource: TShellResource;
     function GetDateOrder(const DateFormat: string): TDateOrder;
@@ -49,7 +60,7 @@ type
     function GetNextID(TableName: string): Integer;
     procedure PopulateUserData;
     function CopyRecord(DataSet: TFDMemTable): OleVariant;
-    function GetuseCount(Request: String): Integer;
+    function GetuseCount(Request: string): Integer;
 
 //    function GetDelta(DataSetArray: TDataSetArray): TFDJSONDeltas;
     procedure ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string);
@@ -65,27 +76,47 @@ type
     FResponse: string;
     FShellResource: TShellResource;
     FClient: TVBServerMethodsClient;
-    FFServerErrorMsg: string;
+    FServerErrorMsg: string;
     FCurrentPeriod: Integer;
     FCurrentMonth: Integer;
     FMadeChanges: Boolean;
     FDBAction: TDBActions;
-    FQueryRequest: String;
-    FItemToCount: String;
+    FQueryRequest: string;
+    FItemToCount: string;
+    FSourceFolder: string;
+    FDestFolder: string;
+    FFileName: string;
+    FFullFileName: string;
+    FAppID: Integer;
+    FAppName: string;
+    FCounter: Integer;
+    FCurrentFileTimeStamp: TDateTime;
+    FNewFileTimeStamp: TDateTime;
+    FNewFileTimeStampString: string;
+    FFilesToUpdate: Integer;
   public
     { Public declarations }
     FDataSetArray: TDataSetArray;
     FUserData: TUserData;
+    FMyDataSet: TFDMemTable;
+    FMyDataSource: TDataSource;
 
     property ShellResource: TShellResource read FShellResource write FShellResource;
     property Client: TVBServerMethodsClient read FClient write FClient;
-    property FServerErrorMsg: string read FFServerErrorMsg write FFServerErrorMsg;
+    property ServerErrorMsg: string read FServerErrorMsg write FServerErrorMsg;
     property CurrentPeriod: Integer read FCurrentPeriod write FCurrentPeriod;
     property CurrentMonth: Integer read FCurrentMonth write FCurrentMonth;
     property MadeChanges: Boolean read FMadeChanges write FMadeChanges;
     property DBAction: TDBActions read FDBAction write FDBAction;
-    property QueryRequest: String read FQueryRequest write FQueryRequest;
-    property ItemToCount: String read FItemToCount write FItemToCount;
+    property QueryRequest: string read FQueryRequest write FQueryRequest;
+    property ItemToCount: string read FItemToCount write FItemToCount;
+    property MyDataSet: TFDMemTable read FMyDataSet write FMyDataSet;
+    property MyDataSource: TDataSource read FMyDataSource write FMyDataSource;
+
+    function FoundNewVersion: Boolean;
+    function CheckForUpdates(AppID: Integer; AppName: string): Boolean;
+    procedure DownLoadFile;
+    procedure ResetFileTimeStatmp;
   end;
 
 var
@@ -96,8 +127,8 @@ implementation
 {%CLASSGROUP 'Vcl.Controls.TControl'}
 
 uses
-  VBCommonValues,
-  RUtils;
+  RUtils,
+  Progress_Frm;
 
 {$R *.dfm}
 
@@ -151,9 +182,9 @@ begin
     Exit;
 
   DataSet.AppendData(TFDJSONDataSetsReader.GetListValueByName(DataSetList, DataSetName));
-{$IFDEF DEBUG}
+  {$IFDEF DEBUG}
   DataSet.SaveToFile(FileName, sfXML);
-{$ENDIF}
+  {$ENDIF}
 end;
 
 function TVBBaseDM.GetNextID(TableName: string): Integer;
@@ -161,7 +192,7 @@ begin
   Result := StrToInt(FClient.GetNextID(Tablename));
 end;
 
-function TVBBaseDM.GetuseCount(Request: String): Integer;
+function TVBBaseDM.GetuseCount(Request: string): Integer;
 begin
   Result := StrToInt(FClient.GetUseCount(Request));
 end;
@@ -286,20 +317,16 @@ var
   DeltaList: TFDJSONDeltas;
   Response: string;
 begin
-//  I := fdsContactType.ChangeCount;
   Response := '';
   DeltaList := GetDelta(DataSetArray);
-  try
-    FServerErrorMsg := FClient.ApplyDataUpdates(DeltaList, Response, GeneratorName, TableName);
-    // Do we need to do this????
-//    for I := 0 to Length(DataSetArray) - 1 do
-//      DataSetArray[I].CancelUpdates;
+//  try
+  Response := FClient.ApplyDataUpdates(DeltaList, Response, GeneratorName, TableName);
+  FServerErrorMsg := Format(Response, [TableName]);
 
-  except
-    on E: TDSServiceException do
-//    on E: Exception do
-      raise Exception.Create('Error Applying Updates: ' + E.Message)
-  end;
+//  except
+//    on E: TDSServiceException do
+//      raise Exception.Create('Error Applying Updates: ' + E.Message)
+//  end;
 end;
 
 procedure TVBBaseDM.CancelUpdates(DataSetArray: TDataSetArray);
@@ -380,6 +407,234 @@ var
   end;
 end;
 
+function TVBBaseDM.FoundNewVersion: Boolean;
+var
+  VersionInfo: TStringList;
+  Request, Response: string;
+begin
+  VersionInfo := RUtils.CreateStringList(PIPE, SINGLE_QUOTE);
+  FileAge(FDestFolder + FFileName, FCurrentFileTimeStamp);
+
+  Request :=
+    'FILE_NAME=' + FFileName + PIPE +
+    'TARGET_FILE_TIMESTAMP=' + FormatDateTime('yyyy-MM-dd hh:mm:ss',
+    FCurrentFileTimeStamp); // DateTimeToStr(CurrentAppFileTimestamp);
+
+  try
+    VersionInfo.DelimitedText := VBBaseDM.Client.GetFileVersion(Request, Response);
+    Result := VersionInfo.Values['RESPONSE'] = 'FOUND_NEW_VERSION';
+
+    if Result then
+    begin
+      if Length(Trim(FNewFileTimeStampString)) = 0 then
+        FNewFileTimeStampString := VersionInfo.Values['FILE_TIMESTAMP'];
+    end
+    else
+      FNewFileTimeStampString := FormatDateTime('yyyy-MM-dd hh:mm:ss', Now);
+  finally
+    VersionInfo.Free;
+  end;
+end;
+
+function TVBBaseDM.CheckForUpdates(AppID: Integer; AppName: string): Boolean;
+var
+  VersionInfo: TStringList;
+  Request, Response: string;
+//  CurrentAppFileTimestamp: TDateTime;
+  UpdateFile: Boolean;
+//  Iteration: Extended;
+begin
+  FAppID := AppID;
+  FAppName := AppName;
+  VersionInfo := RUtils.CreateStringList(PIPE, SINGLE_QUOTE);
+  Result := False;
+  Response := '';
+
+  if AppID > 0 then
+    GetData(82, cdsRepository, cdsRepository.Name, ' WHERE R.APP_ID = ' + FAppID.ToString + ' ORDER BY R.ID',
+      'C:\Data\Xml\Repository.xml', cdsRepository.UpdateOptions.Generatorname,
+      cdsRepository.UpdateOptions.UpdateTableName)
+  else
+    GetData(82, cdsRepository, cdsRepository.Name, ' WHERE R.FILE_NAME = ' + AnsiQuotedStr(FAppName, ''''),
+      'C:\Data\Xml\Repository.xml', cdsRepository.UpdateOptions.Generatorname,
+      cdsRepository.UpdateOptions.UpdateTableName);
+
+  if cdsRepository.IsEmpty then
+    Exit;
+
+  if ProgressFrm = nil then
+    ProgressFrm := TProgressFrm.Create(nil);
+  ProgressFrm.FormStyle := fsStayOnTop;
+//  ProgressFrm.prgDownload.Style.LookAndFeel.NativeStyle := True;
+//  ProgressFrm.prgDownload.Properties.BeginColor := $F0CAA6; //clSkyBlue;
+  ProgressFrm.Update;
+  ProgressFrm.Show;
+
+  FCounter := 0;
+  FFilesToUpdate := cdsRepository.RecordCount;
+
+  try
+    cdsRepository.First;
+    while not cdsRepository.EOF do
+    begin
+      SendMessage(ProgressFrm.Handle, WM_DOWNLOAD_CAPTION, DWORD(PChar('Preparing downloads. Please wait...')), 0);
+
+      Inc(FCounter);
+//      Iteration := FCounter / FFilesToUpdate * 100;
+      FSourceFolder := RUtils.AddChar(cdsRepository.FieldByName('SOURCE_FOLDER').AsString, '\', rpEnd);
+      FDestFolder := RUtils.AddChar(cdsRepository.FieldByName('DEST_FOLDER').AsString, '\', rpEnd);
+      FFileName := cdsRepository.FieldByName('FILE_NAME').AsString;
+      FFullFileName := FDestFolder + FFileName;
+
+      if TFile.Exists(FFullFileName) then
+        FileAge(FFullFileName, FNewFileTimeStamp)
+      else
+        FNewFileTimeStamp := Now;
+
+      UpdateFile := IntegerToBoolean(cdsRepository.FieldByName('UPDATE_FILE').AsInteger);
+
+      if TFile.Exists(FFullFileName) then
+      begin
+        // If this file has been marked as NOT updateable AND has been marked
+        // for deletion, then delete the file.
+        if not (UpdateFile)
+          and (IntegerToBoolean(cdsRepository.FieldByName('DELETE_FILE').AsInteger)) then
+          TFile.Delete(FFullFileName)
+        // If this file has been marked as updateable then download and replace it.
+        else if IntegerToBoolean(cdsRepository.FieldByName('UPDATE_FILE').AsInteger) then
+          UpdateFile := FoundNewVersion
+        else
+          UpdateFile := False;
+      end;
+      // Download a new version of the file if a new one is found or if the file
+      // is missing and updateable.
+//      else
+//        UpdateFile := True;
+
+      if UpdateFile then
+        DownLoadFile;
+
+      cdsRepository.Next;
+    end;
+
+    VersionInfo.DelimitedText := VBBaseDM.Client.GetFileVersion(Request, Response);
+  finally
+    VersionInfo.Free;
+    FreeAndNil(ProgressFrm);
+  end;
+end;
+
+procedure TVBBaseDM.DownLoadFile;
+var
+  TheFileStream: TStream;
+  Buffer: PByte;
+  MemStream: TMemoryStream;
+  BufSize, BytesRead, TotalBytesRead: Integer;
+  StreamSize: Int64;
+  Response: string;
+  ResponseList: TStringList;
+  Progress: Extended;
+begin
+  SendMessage(ProgressFrm.Handle, WM_DOWNLOAD_CAPTION, DWORD(PChar('Downloading: ' +
+    FFileName + ' (' + FCounter.ToString + ' of ' + FFilesToUpdate.ToString + ')')), 0);
+
+  BufSize := 1024;
+  MemStream := TMemoryStream.Create;
+//  TheFileStream :=  TStream.Create;
+  GetMem(Buffer, BufSize);
+  Response := '';
+  StreamSize := 0;
+  ResponseList := RUtils.CreateStringList(PIPE, SINGLE_QUOTE);
+  TotalBytesRead := 0;
+
+  try
+    TheFileStream := FClient.DownloadFile(FFileName, Response, StreamSize);
+    ResponseList.DelimitedText := Response;
+
+    if ResponseList.Values['RESPONSE'] = 'FILE_NOT_FOUND' then
+      Exit;
+
+    TheFileStream.Position := 0;
+
+    if (StreamSize <> 0) then
+    begin
+//        filename := 'download.fil';
+
+      repeat
+        BytesRead := TheFileStream.Read(Pointer(Buffer)^, BufSize);
+
+        if (BytesRead > 0) then
+        begin
+          TotalBytesRead := TotalBytesRead + BytesRead;
+          MemStream.WriteBuffer(Pointer(Buffer)^, BytesRead);
+          Progress := StrToFloat(TotalBytesRead.ToString) / StrToFloat(StreamSize.ToString) * 100;
+          SendMessage(ProgressFrm.Handle, WM_DOWNLOAD_PROGRESS, DWORD(PChar(FloatToStr(Progress))), 0);
+          Application.ProcessMessages;
+//          SendMessage(ProgressFrm.Handle, WM_DOWNLOAD_CAPTION, DWORD(PChar('CAPTION=Downloading: ' +
+//            FFileName + ' (' + FCounter.ToString + ' of ' + FFilesToUpdate.ToString + ')' + '|PROGRESS=' + FloatToStr(Progress))), 0);
+        end;
+      until (BytesRead < BufSize);
+
+      if (StreamSize <> MemStream.Size) then
+      begin
+        raise Exception.Create('Error downloading file...');
+      end
+      else
+      begin
+        MemStream.SaveToFile(FDestFolder + FFileName);
+        ResetFileTimeStatmp;
+      end;
+    end
+  finally
+    ResponseList.Free;
+    FreeMem(Buffer, BufSize);
+    FreeAndNil(MemStream);
+    // Note to developer:
+    // DO NOT FREE THE TheFileStream STREAM HERE!!!
+    // The DBXConnection unit takes care of this. If you free it here you will
+    // get an AV error the next time you try to free it.
+  end;
+end;
+
+procedure TVBBaseDM.ResetFileTimeStatmp;
+var
+  TargetFileHandle: Integer;
+  aYear, aMonth, aDay, aHour, aMin, aSec, aMSec: Word;
+  TheDate: Double;
+begin
+//  FileAge(FFullFileName, FNewFileTimeStamp);
+//  FNewFileTimestamp := VarToDateTime(FNewFileTimeStampString);
+  // Get the handle of the file.
+  TargetFileHandle := FileOpen(FDestFolder + FFileName, fmOpenReadWrite);
+  // Decode timestamp and resolve to its constituent parts.
+  DecodeDateTime(FNewFileTimeStamp, aYear, aMonth, aDay, aHour, aMin, aSec, aMSec);
+  TheDate := EncodeDate(aYear, aMonth, aDay);
+
+  if (aSec = 59) and (aMin = 59) then
+    Inc(aHour)
+  else if aSec mod 2 <> 0 then
+    Inc(aSec);
+
+  if aSec = 59 then
+    aSec := 0;
+
+  if aMin = 59 then
+    aMin := 0;
+
+        // If handle was successfully generated then reset the timestamp
+  if TargetFileHandle > 0 then
+  begin
+    FileSetDate(TargetFileHandle, DateTimeToFileDate(TheDate + (aHour / 24) + (aMin / (24 * 60)) + (aSec / 24 / 60 / 60)));
+  end;
+  // Close the file
+  FileClose(TargetFileHandle);
+
+//  // Copy the newly downloaded app to its actual location.
+//  TFile.Copy(TempFolder + APP_NAME, AppFileName);
+//  while not TFile.Exists(AppFileName) do
+//    Application.ProcessMessages;
+end;
+
 procedure TVBBaseDM.SetConnectionProperties;
 var
   RegKey: TRegistry;
@@ -393,7 +648,7 @@ begin
     if not RegKey.ValueExists('Host Name') then
       RegKey.WriteString('Host Name', 'localhost');
 
-{$IFDEF DEBUG}
+    {$IFDEF DEBUG}
     if not RegKey.ValueExists(VB_SHELL_DEV_TCP_KEY_NAME) then
       RegKey.WriteString(VB_SHELL_DEV_TCP_KEY_NAME, VB_SHELL_DEV_TCP_PORT);
 
@@ -401,7 +656,7 @@ begin
       RegKey.WriteString(VB_SHELL_DEV_HTTP_KEY_NAME, VB_SHELL_DEV_HTTP_PORT);
 
     Port := RegKey.ReadString(VB_SHELL_DEV_TCP_KEY_NAME);
-{$ELSE}
+    {$ELSE}
     if not RegKey.ValueExists(VB_SHELLX_TCP_KEY_NAME) then
       RegKey.WriteString(VB_SHELLX_TCP_KEY_NAME, VB_SHELLX_TCP_PORT);
 
@@ -409,7 +664,7 @@ begin
       RegKey.WriteString(VB_SHELLX_HTTP_KEY_NAME, VB_SHELLX_HTTP_PORT);
 
     Port := RegKey.ReadString(VB_SHELLX_TCP_KEY_NAME);
-{$ENDIF}
+    {$ENDIF}
 
     VBBaseDM.sqlConnection.Params.Values['DriverName'] := 'DataSnap';
     VBBaseDM.sqlConnection.Params.Values['DatasnapContext'] := 'DataSnap/';

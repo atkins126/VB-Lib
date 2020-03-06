@@ -34,10 +34,6 @@ type
     litHeaderTitle: TdxLayoutItem;
     litSubTitle: TdxLayoutItem;
     litLegend: TdxLayoutItem;
-    lblLegend: TcxLabel;
-    styMandatory: TcxEditStyleController;
-    lblRequired: TcxLabel;
-    litRequired: TdxLayoutItem;
     lblSubTitle: TcxDBLabel;
     sep2: TdxLayoutSeparatorItem;
     procedure FormCreate(Sender: TObject);
@@ -69,7 +65,18 @@ begin
   inherited;
   Caption := MTDM.FormCaption;
   lblHeaderTitle.Caption := MTDM.HeaderCaptionArray[MTDM.DetailIndex];
-  lblSubTitle.DataBinding.DataSource := MTDM.dtsCustomer;
+
+  if MTDM.DetailIndex = 5 then
+  begin
+    lblSubTitle.DataBinding.DataSource := MTDM.dtsDirector;
+    lblSubTitle.DataBinding.DataField := 'FULL_NAME';
+  end
+  else
+  begin
+    lblSubTitle.DataBinding.DataSource := MTDM.dtsCustomer;
+    lblSubTitle.DataBinding.DataField := 'NAME';
+  end;
+
   styHeaderFont.Style.Font.Color := cxLookAndFeels.RootLookAndFeel.SkinPainter.DefaultContentTextColor;
   styHeaderFont.Style.TextColor := cxLookAndFeels.RootLookAndFeel.SkinPainter.DefaultContentTextColor;
   stySubTitle.Style.Font.Color := cxLookAndFeels.RootLookAndFeel.SkinPainter.DefaultContentTextColor;
