@@ -63,7 +63,8 @@ type
     function GetuseCount(Request: string): Integer;
 
 //    function GetDelta(DataSetArray: TDataSetArray): TFDJSONDeltas;
-    procedure ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string);
+    procedure PostData(DataSet: TFDMemTable);
+    procedure ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string; ScriptID: Integer);
     procedure CancelUpdates(DataSetArray: TDataSetArray);
     function ExecuteSQLCommand(Request: string): string;
     function ExecuteStoredProcedure(ProcedureName, ParameterList: string): string;
@@ -280,6 +281,18 @@ begin
   end;
 end;
 
+procedure TVBBaseDM.PostData(DataSet: TFDMemTable);
+begin
+  SetLength(FDataSetArray, 1);
+  FDataSetArray[0] := TFDMemTable(DataSet);
+
+  ApplyUpdates(FDataSetArray, TFDMemTable(DataSet).UpdateOptions.Generatorname,
+    TFDMemTable(DataSet).UpdateOptions.UpdateTableName,
+    TFDMemTable(DataSet).Tag);
+
+  TFDMemTable(DataSet).CommitUpdates;
+end;
+
 function TVBBaseDM.UpdatesPending(DataSetArray: TDataSetArray): Boolean;
 var
   I: Integer;
@@ -312,7 +325,8 @@ end;
 //  end;
 //end;
 
-procedure TVBBaseDM.ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string);
+procedure TVBBaseDM.ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string;
+  ScriptID: Integer);
 var
   DeltaList: TFDJSONDeltas;
   Response: string;
@@ -320,7 +334,7 @@ begin
   Response := '';
   DeltaList := GetDelta(DataSetArray);
 //  try
-  Response := FClient.ApplyDataUpdates(DeltaList, Response, GeneratorName, TableName);
+  Response := FClient.ApplyDataUpdates(DeltaList, Response, GeneratorName, TableName, ScriptID);
   FServerErrorMsg := Format(Response, [TableName]);
 
 //  except
@@ -372,7 +386,7 @@ var
   Response: string;
 begin
   Response := '';
-  Result := FClient.ExecuteSQLCommand(Request, Response);
+  Result := FClient.ExecuteSQLCommand(Request);
 end;
 
 function TVBBaseDM.ExecuteStoredProcedure(ProcedureName, ParameterList: string): string;
@@ -666,11 +680,11 @@ begin
     Port := RegKey.ReadString(VB_SHELLX_TCP_KEY_NAME);
     {$ENDIF}
 
-    VBBaseDM.sqlConnection.Params.Values['DriverName'] := 'DataSnap';
-    VBBaseDM.sqlConnection.Params.Values['DatasnapContext'] := 'DataSnap/';
-    VBBaseDM.sqlConnection.Params.Values['CommunicationProtocol'] := 'tcp/ip';
-    VBBaseDM.sqlConnection.Params.Values['Port'] := Port;
-    VBBaseDM.sqlConnection.Params.Values['HostName'] := RegKey.ReadString('Host Name');
+    sqlConnection.Params.Values['DriverName'] := 'DataSnap';
+    sqlConnection.Params.Values['DatasnapContext'] := 'DataSnap/';
+    sqlConnection.Params.Values['CommunicationProtocol'] := 'tcp/ip';
+    sqlConnection.Params.Values['Port'] := Port;
+    sqlConnection.Params.Values['HostName'] := RegKey.ReadString('Host Name');
     RegKey.CloseKey;
   finally
     RegKey.Free;

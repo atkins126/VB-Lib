@@ -15,6 +15,7 @@ inherited VBBaseDM: TVBBaseDM
       'Filters={}')
   end
   object cdsRepository: TFDMemTable
+    Tag = 82
     ActiveStoredUsage = [auDesignTime]
     FilterOptions = [foCaseInsensitive]
     CachedUpdates = True
