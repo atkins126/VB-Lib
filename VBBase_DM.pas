@@ -95,12 +95,13 @@ type
     FNewFileTimeStamp: TDateTime;
     FNewFileTimeStampString: string;
     FFilesToUpdate: Integer;
-  public
-    { Public declarations }
-    FDataSetArray: TDataSetArray;
-    FUserData: TUserData;
+
     FMyDataSet: TFDMemTable;
     FMyDataSource: TDataSource;
+  public
+    { Public declarations }
+    DataSetArray: TDataSetArray;
+    UserData: TUserData;
 
     property ShellResource: TShellResource read FShellResource write FShellResource;
     property Client: TVBServerMethodsClient read FClient write FClient;
@@ -113,6 +114,8 @@ type
     property ItemToCount: string read FItemToCount write FItemToCount;
     property MyDataSet: TFDMemTable read FMyDataSet write FMyDataSet;
     property MyDataSource: TDataSource read FMyDataSource write FMyDataSource;
+//    property DataSetArray: TDataSetArray read FDataSetArray write FDataSetArray;
+//    property UserData: TUserData read FUserData write FUserData;
 
     function FoundNewVersion: Boolean;
     function CheckForUpdates(AppID: Integer; AppName: string): Boolean;
@@ -270,12 +273,12 @@ begin
   try
     RegKey.RootKey := HKEY_CURRENT_USER;
     Regkey.OpenKey(KEY_USER_DATA, True);
-    FUserData.UserID := RegKey.ReadInteger('User ID');
-    FUserData.UserName := RegKey.ReadString('User Name');
-    FUserData.FirstName := RegKey.ReadString('First Name');
-    FUserData.LastName := RegKey.ReadString('Last Name');
-    FUserData.EmailAddress := RegKey.ReadString('Email Address');
-    FUserData.AccountEnabled := RegKey.ReadBool('Account Enabled');
+    UserData.UserID := RegKey.ReadInteger('User ID');
+    UserData.UserName := RegKey.ReadString('Login Name');
+    UserData.FirstName := RegKey.ReadString('First Name');
+    UserData.LastName := RegKey.ReadString('Last Name');
+    UserData.EmailAddress := RegKey.ReadString('Email Address');
+    UserData.AccountEnabled := RegKey.ReadBool('Account Enabled');
   finally
     RegKey.Free
   end;
@@ -283,10 +286,10 @@ end;
 
 procedure TVBBaseDM.PostData(DataSet: TFDMemTable);
 begin
-  SetLength(FDataSetArray, 1);
-  FDataSetArray[0] := TFDMemTable(DataSet);
+  SetLength(DataSetArray, 1);
+  DataSetArray[0] := TFDMemTable(DataSet);
 
-  ApplyUpdates(FDataSetArray, TFDMemTable(DataSet).UpdateOptions.Generatorname,
+  ApplyUpdates(DataSetArray, TFDMemTable(DataSet).UpdateOptions.Generatorname,
     TFDMemTable(DataSet).UpdateOptions.UpdateTableName,
     TFDMemTable(DataSet).Tag);
 
@@ -382,10 +385,10 @@ begin
 end;
 
 function TVBBaseDM.ExecuteSQLCommand(Request: string): string;
-var
-  Response: string;
+//var
+//  Response: string;
 begin
-  Response := '';
+//  Response := '';
   Result := FClient.ExecuteSQLCommand(Request);
 end;
 
