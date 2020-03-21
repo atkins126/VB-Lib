@@ -78,6 +78,7 @@ type
     FShellResource: TShellResource;
     FClient: TVBServerMethodsClient;
     FServerErrorMsg: string;
+    FCurrentYear: Integer;
     FCurrentPeriod: Integer;
     FCurrentMonth: Integer;
     FMadeChanges: Boolean;
@@ -106,6 +107,7 @@ type
     property ShellResource: TShellResource read FShellResource write FShellResource;
     property Client: TVBServerMethodsClient read FClient write FClient;
     property ServerErrorMsg: string read FServerErrorMsg write FServerErrorMsg;
+    property CurrentYear: Integer read FCurrentYear write FCurrentYear;
     property CurrentPeriod: Integer read FCurrentPeriod write FCurrentPeriod;
     property CurrentMonth: Integer read FCurrentMonth write FCurrentMonth;
     property MadeChanges: Boolean read FMadeChanges write FMadeChanges;
