@@ -187,6 +187,14 @@ begin
   if FResponse = 'NO_DATA' then
     Exit;
 
+  // Note to developer...
+  // If you have any Calcculated or InternalCalc fields you MUST open the
+  // dataset BEFORE populating it with data. If you don't do this you will get
+  // the following FireDAC error:
+  // Cannot change table [DataSetname] table structure when table has rows
+  // The Open action prepares the dataset and resolves calculated and/or
+  // InternalCalc fields.
+  DataSet.Open;
   DataSet.AppendData(TFDJSONDataSetsReader.GetListValueByName(DataSetList, DataSetName));
   {$IFDEF DEBUG}
   DataSet.SaveToFile(FileName, sfXML);
