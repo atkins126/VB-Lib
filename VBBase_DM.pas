@@ -338,22 +338,44 @@ end;
 //  end;
 //end;
 
-procedure TVBBaseDM.ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string;
-  ScriptID: Integer);
+procedure TVBBaseDM.ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string; ScriptID: Integer);
+const
+  ERROR_MESSAGE = 'One or more erors occurred in posting data to table %s with error message.';
+
 var
   DeltaList: TFDJSONDeltas;
-  Response: string;
+  Response: TStringList;
+  ReplyMessage: string;
 begin
-  Response := '';
+  Response := RUtils.CreateStringList(PIPE, SINGLE_QUOTE);
+  ReplyMessage := '';
   DeltaList := GetDelta(DataSetArray);
-//  try
-  Response := FClient.ApplyDataUpdates(DeltaList, Response, GeneratorName, TableName, ScriptID);
-  FServerErrorMsg := Format(Response, [TableName]);
 
-//  except
-//    on E: TDSServiceException do
-//      raise Exception.Create('Error Applying Updates: ' + E.Message)
-//  end;
+  try
+    Response.DelimitedText := FClient.ApplyDataUpdates(DeltaList, ReplyMessage, GeneratorName, TableName, ScriptID);
+
+    if Sametext(Response.Values['RESPONSE'], 'ERROR') then
+    begin
+      FServerErrorMsg := Format(ERROR_MESSAGE, [TableName]) + CRLF + CRLF +
+        Response.Values['ERROR_MESSAGE'];
+
+      raise EServerError.Create(FServerErrorMsg);
+
+//      Beep;
+//      DisplayMsg(
+//        Application.Title,
+//        'VB Remote Server Error',
+//        'One or more errors occurred when trying to update the VB database.' + CRLF + CRLF +
+//        'Error message from server' + CRLF +
+//        Response.Values['ERROR_MESSAGE'],
+//        mtError,
+//        [mbOK]
+//        );
+
+    end;
+  finally
+    Response.Free;
+  end;
 end;
 
 procedure TVBBaseDM.CancelUpdates(DataSetArray: TDataSetArray);

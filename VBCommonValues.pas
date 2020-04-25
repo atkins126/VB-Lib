@@ -257,6 +257,33 @@ const
     ' SUM(USE_COUNT) AS USE_COUNT ' +
     'FROM (%s)';
 
+  RELEASE_CARRY_FORWARD =
+    ' UPDATE TIMESHEET SET ' +
+    ' RELEASE_CFWD_TO_PERIOD = %d, ' +
+    ' DATE_CFWD_RELEASED = %s, ' +
+    ' CARRY_FORWARD = 0, ' +
+    ' DATE_CARRIED_FORWARD = NULL ' +
+    ' WHERE ID IN(%s)';
+
+  CARRY_FORWARD_STATUS_CHANGE =
+    ' UPDATE TIMESHEET SET ' +
+    ' CARRY_FORWARD = 1, ' +
+    ' DATE_CARRIED_FORWARD = %s, ' +
+    ' INVOICE_ID = -1, ' +
+    ' DATE_CFWD_RELEASED = NULL, ' +
+    ' RELEASE_CFWD_TO_PERIOD = 0 ' +
+    ' WHERE ID IN(%s)';
+
+  APPROVE_STATUS_CHANGE =
+    ' UPDATE TIMESHEET SET ' +
+    ' APPROVED = %d ' +
+    ' WHERE ID IN(%s)';
+
+  BILLABLE_STATUS_CHANGE =
+    ' UPDATE TIMESHEET SET ' +
+    ' BILLABLE = %d ' +
+    ' WHERE ID IN(%s)';
+
 {
 SELECT SUM(C) AS ID_COUNT
 FROM (
