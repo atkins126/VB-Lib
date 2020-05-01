@@ -123,7 +123,6 @@ type
     function CheckForUpdates(AppID: Integer; AppName: string): Boolean;
     procedure DownLoadFile;
     procedure ResetFileTimeStatmp;
-    procedure CalculateFieldValues(DataSet: TFDMemTable);
   end;
 
 var
@@ -202,16 +201,6 @@ begin
   {$ENDIF}
 end;
 
-function TVBBaseDM.GetMasterData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName: string): TFDJSONDataSets;
-//var
-//  Response: string;
-begin
-//  if FClient = nil then
-//    FClient := TLeaveServerMethodsClient.Create(BaseDM.sqlConnection.DBXConnection);
-  FResponse := '';
-  Result := FClient.GetData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName, FResponse);
-end;
-
 function TVBBaseDM.GetNextID(TableName: string): Integer;
 begin
   Result := StrToInt(FClient.GetNextID(Tablename));
@@ -220,6 +209,16 @@ end;
 function TVBBaseDM.GetuseCount(Request: string): Integer;
 begin
   Result := StrToInt(FClient.GetUseCount(Request));
+end;
+
+function TVBBaseDM.GetMasterData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName: string): TFDJSONDataSets;
+//var
+//  Response: string;
+begin
+//  if FClient = nil then
+//    FClient := TLeaveServerMethodsClient.Create(BaseDM.sqlConnection.DBXConnection);
+  FResponse := '';
+  Result := FClient.GetData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName, FResponse);
 end;
 
 function TVBBaseDM.GetShellResource: TShellResource;
@@ -339,85 +338,22 @@ end;
 //  end;
 //end;
 
-procedure TVBBaseDM.ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string; ScriptID: Integer);
-const
-  ERROR_MESSAGE = 'One or more erors occurred in posting data to table %s with error message.';
-
+procedure TVBBaseDM.ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string;
+  ScriptID: Integer);
 var
   DeltaList: TFDJSONDeltas;
-  Response: TStringList;
-  ReplyMessage: string;
+  Response: string;
 begin
-  Response := RUtils.CreateStringList(PIPE, SINGLE_QUOTE);
-  ReplyMessage := '';
+  Response := '';
   DeltaList := GetDelta(DataSetArray);
+//  try
+  Response := FClient.ApplyDataUpdates(DeltaList, Response, GeneratorName, TableName, ScriptID);
+  FServerErrorMsg := Format(Response, [TableName]);
 
-  try
-    Response.DelimitedText := FClient.ApplyDataUpdates(DeltaList, ReplyMessage, GeneratorName, TableName, ScriptID);
-
-    if Sametext(Response.Values['RESPONSE'], 'ERROR') then
-    begin
-      FServerErrorMsg := Format(ERROR_MESSAGE, [TableName]) + CRLF + CRLF +
-        Response.Values['ERROR_MESSAGE'];
-
-      raise EServerError.Create(FServerErrorMsg);
-
-//      Beep;
-//      DisplayMsg(
-//        Application.Title,
-//        'VB Remote Server Error',
-//        'One or more errors occurred when trying to update the VB database.' + CRLF + CRLF +
-//        'Error message from server' + CRLF +
-//        Response.Values['ERROR_MESSAGE'],
-//        mtError,
-//        [mbOK]
-//        );
-
-    end;
-  finally
-    Response.Free;
-  end;
-end;
-
-procedure TVBBaseDM.CalculateFieldValues(DataSet: TFDMemTable);
-begin
-  // Time in hours
-  DataSet.FieldByName('TIME_HOURS').AsFloat :=
-    DataSet.FieldByName('TIME_SPENT').AsFloat / 60;
-
-  // Item value
-  if DataSet.FieldByName('BILLABLE').AsInteger = 1 then
-  begin
-    if DataSet.FieldByName('RATE_UNIT_ID').AsInteger = 1 then
-      DataSet.FieldByName('ITEM_VALUE').AsFloat :=
-        DataSet.FieldByName('TIME_SPENT').AsFloat / 60 *
-        DataSet.FieldByName('ACTUAL_RATE').AsFloat
-    else
-      DataSet.FieldByName('ITEM_VALUE').AsFloat :=
-        DataSet.FieldByName('ACTUAL_RATE').AsFloat;
-  end
-  else
-    DataSet.FieldByName('ITEM_VALUE').AsFloat := 0;
-
-  // Period
-  DataSet.FieldByName('THE_PERIOD').AsInteger :=
-    GetCurrentPeriod(DataSet.FieldByName('ACTIVITY_DATE').AsDateTime);
-
-  // Period Name
-  DataSet.FieldByName('PERIOD_NAME').AsString :=
-    ShortMonths[MonthInt(DataSet.FieldByName('ACTIVITY_DATE').AsDateTime)] +
-    ' ' + YearStr(DataSet.FieldByName('ACTIVITY_DATE').AsDateTime);
-
-  // Locked status
-  if (DataSet.FieldByName('APPROVED').AsInteger = 1) or (DataSet.FieldByName('INVOICE_ID').AsInteger > 0) then
-    DataSet.FieldByName('LOCKED').AsInteger := 1
-  else
-    DataSet.FieldByName('LOCKED').AsInteger := 0;
-
-  if DataSet.FindField('FULL_NAME') <> nil then
-    DataSet.FieldByName('FULL_NAME').AsString :=
-      DataSet.FieldByName('FIRST_NAME').AsString + '' +
-      DataSet.FieldByName('LAST_NAME').AsString;
+//  except
+//    on E: TDSServiceException do
+//      raise Exception.Create('Error Applying Updates: ' + E.Message)
+//  end;
 end;
 
 procedure TVBBaseDM.CancelUpdates(DataSetArray: TDataSetArray);
@@ -467,8 +403,15 @@ begin
 end;
 
 function TVBBaseDM.ExecuteStoredProcedure(ProcedureName, ParameterList: string): string;
+var
+  SL: TStringList;
 begin
-  Result := FClient.ExecuteStoredProcedure(ProcedureName, ParameterList);
+  SL := RUtils.CreateStringList(PIPE);
+  try
+    SL.DelimitedText := FClient.ExecuteStoredProcedure(ProcedureName, ParameterList);
+  finally
+    SL.Free;
+  end;
 end;
 
 function TVBBaseDM.GetDateOrder(const DateFormat: string): TDateOrder;

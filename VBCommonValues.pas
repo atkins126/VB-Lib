@@ -143,6 +143,7 @@ const
   KEY_TIMESHEET = KEY_COMMON_ROOT + '\Timesheet Manager';
   KEY_TIMESHEET_RELEASE_CFWD_MANAGER = KEY_TIMESHEET + '\Release CFwd Manager';
   KEY_TIMESHEET_DETAIL_REPORT = KEY_TIMESHEET + '\Timesheet Detail Report';
+  KEY_TIMESHEET_BILLABLE_SUMMARY_REPORT = KEY_TIMESHEET + '\Timesheet Billable Summary Report';
 
   APPLICATION_FOLDER = 'C:\Apps\VB\';
   ROOT_FOLDER = 'C:\Data\VB\';
