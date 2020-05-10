@@ -141,7 +141,7 @@ const
   KEY_VB_APPS = KEY_COMMON + '\VB Apps';
   KEY_MASTER_TABLE_MANAGER = KEY_COMMON_ROOT + '\Master Table Manager';
   KEY_TIMESHEET = KEY_COMMON_ROOT + '\Timesheet Manager';
-  KEY_TIMESHEET_RELEASE_CFWD_MANAGER = KEY_TIMESHEET + '\Release CFwd Manager';
+  KEY_TIMESHEET_CARRY_FORWARD_MANAGER = KEY_TIMESHEET + '\Carry Forward Manager';
   KEY_TIMESHEET_DETAIL_REPORT = KEY_TIMESHEET + '\Timesheet Detail Report';
   KEY_TIMESHEET_BILLABLE_SUMMARY_REPORT = KEY_TIMESHEET + '\Timesheet Billable Summary Report';
 
@@ -159,9 +159,10 @@ const
   VB_SHELL_FOLDER = ROOT_FOLDER + 'VB Shell\';
   PDF_DOCS = ROOT_FOLDER + 'PDF\';
   ATTACHMENT_ROOT_FOLDER = ROOT_FOLDER + 'Attachment\';
+  DB_UPGRADE_SCRIPT_FOLDER = ROOT_FOLDER + 'DB Upgrade\';
 
   // FireDAC conection definition file.
-  CONNECTION_DEFINITION_FILE = ROOT_FOLDER + COMMON_FOLDER + 'ConnectionDefinitions.ini';
+  CONNECTION_DEFINITION_FILE = {ROOT_FOLDER + }RESOURCE_FOLDER + 'ConnectionDefinitions.ini';
 
   FILE_TYPE_APPLICATION = 1;
   FILE_TYPE_INSTALLER = 2;
@@ -207,6 +208,7 @@ const
   WM_APP_CLOSED = WM_USER + 505;
   WM_STATE_CHANGE = WM_USER + 506;
   WM_DOWNLOAD_PROGRESS = WM_USER + 507;
+  WM_POST_DATA_ERROR = WM_USER + 508;
 
 //-------------------    SQL Server Errror Messages     ------------------------
 { Error No  Severity Message

@@ -68,8 +68,9 @@ type
     procedure CancelUpdates(DataSetArray: TDataSetArray);
     function ExecuteSQLCommand(Request: string): string;
     function ExecuteStoredProcedure(ProcedureName, ParameterList: string): string;
-
     function EchoTheString(Request: string; var Response: string): string;
+    function InsertRecord(Request: string; var Response: string): string;
+
     procedure DataModuleCreate(Sender: TObject);
     procedure DataModuleDestroy(Sender: TObject);
   private
@@ -99,6 +100,7 @@ type
 
     FMyDataSet: TFDMemTable;
     FMyDataSource: TDataSource;
+    FPostError: Boolean;
   public
     { Public declarations }
     DataSetArray: TDataSetArray;
@@ -116,6 +118,7 @@ type
     property ItemToCount: string read FItemToCount write FItemToCount;
     property MyDataSet: TFDMemTable read FMyDataSet write FMyDataSet;
     property MyDataSource: TDataSource read FMyDataSource write FMyDataSource;
+    property PostError: Boolean read FPostError write FPostError;
 //    property DataSetArray: TDataSetArray read FDataSetArray write FDataSetArray;
 //    property UserData: TUserData read FUserData write FUserData;
 
@@ -220,6 +223,11 @@ end;
 function TVBBaseDM.GetuseCount(Request: string): Integer;
 begin
   Result := StrToInt(FClient.GetUseCount(Request));
+end;
+
+function TVBBaseDM.InsertRecord(Request: string; var Response: string): string;
+begin
+  Result := FClient.InsertRecord(Request, Response);
 end;
 
 function TVBBaseDM.GetShellResource: TShellResource;
@@ -348,7 +356,7 @@ var
   Response: TStringList;
   ReplyMessage: string;
 begin
-  Response := RUtils.CreateStringList(PIPE, SINGLE_QUOTE);
+  Response := RUtils.CreateStringList(PIPE, DOUBLE_QUOTE);
   ReplyMessage := '';
   DeltaList := GetDelta(DataSetArray);
 
@@ -496,7 +504,7 @@ var
   VersionInfo: TStringList;
   Request, Response: string;
 begin
-  VersionInfo := RUtils.CreateStringList(PIPE, SINGLE_QUOTE);
+  VersionInfo := RUtils.CreateStringList(PIPE, DOUBLE_QUOTE);
   FileAge(FDestFolder + FFileName, FCurrentFileTimeStamp);
 
   Request :=
@@ -530,7 +538,7 @@ var
 begin
   FAppID := AppID;
   FAppName := AppName;
-  VersionInfo := RUtils.CreateStringList(PIPE, SINGLE_QUOTE);
+  VersionInfo := RUtils.CreateStringList(PIPE, DOUBLE_QUOTE);
   Result := False;
   Response := '';
 
@@ -628,7 +636,7 @@ begin
   GetMem(Buffer, BufSize);
   Response := '';
   StreamSize := 0;
-  ResponseList := RUtils.CreateStringList(PIPE, SINGLE_QUOTE);
+  ResponseList := RUtils.CreateStringList(PIPE, DOUBLE_QUOTE);
   TotalBytesRead := 0;
 
   try
