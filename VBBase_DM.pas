@@ -127,6 +127,8 @@ type
     procedure DownLoadFile;
     procedure ResetFileTimeStatmp;
     procedure CalculateFieldValues(DataSet: TFDMemTable);
+    procedure BuildInsertStatement(TagValue: Integer; var FieldList, FieldValues: string; DataSet: TFDMemTable);
+    procedure BuildUpdateStatement(TagValue: Integer; var FieldListValues, WhereClause: string; DataSet: TFDMemTable);
   end;
 
 var
@@ -807,6 +809,123 @@ end;
 function TVBBaseDM.EchoTheString(Request: string; var Response: string): string;
 begin
   Result := FClient.EchoString(Request, Response);
+end;
+
+procedure TVBBaseDM.BuildInsertStatement(TagValue: Integer; var FieldList,
+  FieldValues: string; DataSet: TFDMemTable);
+begin
+  case TagValue of
+    3: // Customer
+      begin
+        FieldList :=
+          'CUSTOMER_TYPE_ID, ' +
+          'YEAR_END_MONTH_ID, ' +
+          'TAX_OFFICE_ID, ' +
+          'VAT_MONTH_ID, ' +
+          'VAT_COUNTRY_ID, ' +
+          'VAT_OFFICE_ID, ' +
+          'AR_MONTH_ID, ' +
+          'STATUS_ID, ' +
+          'NAME, ' +
+          'FIRST_NAME, ' +
+          'LAST_NAME, ' +
+          'INITIALS, ' +
+          'TRADING_AS, ' +
+          'BILL_TO, ' +
+          'CO_NO, ' +
+          'TAX_NO, ' +
+          'VAT_NO, ' +
+          'VAT_CUSTOMS_CODE, ' +
+          'PAYE_NO, ' +
+          'SDL_NO, ' +
+          'WC_NO, ' +
+          'AR_COMPLETION_DATE, ' +
+          'PASTEL_ACC_CODE, ' +
+          'VB_TAX_ACC_CODE, ' +
+          'IS_PROV_TAX_PAYER, ' +
+          'HAS_LIVING_WILL, ' +
+          'IS_ORGAN_DONOR, ' +
+          'IS_ACTIVE, ' +
+          'EFILING, ' +
+          'EF_USER_NAME, ' +
+          'EF_PASSWORD, ' +
+          'CUSTOMER_GROUP_ID, ' +
+          'UIF_NO';
+
+        FieldValues :=
+          IntToStr(DataSet.FieldByName('CUSTOMER_TYPE_ID').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('YEAR_END_MONTH_ID').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('TAX_OFFICE_ID').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('VAT_MONTH_ID').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('VAT_COUNTRY_ID').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('VAT_OFFICE_ID').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('AR_MONTH_ID').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('STATUS_ID').AsInteger) + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('NAME').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('INITIALS').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('TRADING_AS').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('BILL_TO').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('CO_NO').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('TAX_NO').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('VAT_NO').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('VAT_CUSTOMS_CODE').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('PAYE_NO').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('SDL_NO').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('WC_NO').AsString, '''') + ', ' +
+          AnsiQuotedStr(FormatDateTime('yyyy-MM-dd', DataSet.FieldByName('AR_COMPLETION_DATE').AsDateTime), '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('PASTEL_ACC_CODE').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('VB_TAX_ACC_CODE').AsString, '''') + ', ' +
+          IntToStr(DataSet.FieldByName('IS_PROV_TAX_PAYER').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('HAS_LIVING_WILL').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('IS_ORGAN_DONOR').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('IS_ACTIVE').AsInteger) + ', ' +
+          IntToStr(DataSet.FieldByName('EFILING').AsInteger) + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('EF_USER_NAME').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('EF_PASSWORD').AsString, '''') + ', ' +
+          IntToStr(DataSet.FieldByName('CUSTOMER_GROUP_ID').AsInteger) + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('UIF_NO').AsString, '''');
+      end;
+    // All of these tables have the same structure with only one updateable
+    // field named NAME.
+    5, 6, 11, 13, 14, 15, 19, 20, 23, 25, 39, 48, 52, 56:
+      begin
+        FieldList := '"NAME"';
+        FieldValues := AnsiQuotedStr(DataSet.FieldByName('NAME').AsString, '''');
+      end;
+
+    22: // Price list
+      begin
+        FieldList :=
+          'RATE_UNIT_ID, ' +
+          'NAME, ' +
+          'RATE, ' +
+          'INVOICE_DESCRIPTION, ' +
+          'DESCRIPTION';
+
+        FieldValues :=
+          IntToStr(DataSet.FieldByName('RATE_UNIT_ID').AsInteger) + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('NAME').AsString, '''') + ', ' +
+          FloatToStr(DataSet.FieldByName('RATE').AsFloat) + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('INVOICE_DESCRIPTION').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('DESCRIPTION').AsString, '''');
+      end;
+
+    38: // Rate uint
+      begin
+        FieldList := '"NAME", ABBREVIATION';
+        FieldValues :=
+          AnsiQuotedStr(DataSet.FieldByName('NAME').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('ABBREVIATION').AsString, '''');
+      end;
+  end;
+end;
+
+procedure TVBBaseDM.BuildUpdateStatement(TagValue: Integer; var FieldListValues,
+  WhereClause: string; DataSet: TFDMemTable);
+begin
+//
 end;
 
 end.
