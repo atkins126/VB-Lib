@@ -83,6 +83,7 @@ begin
   stySubTitle.Style.TextColor := cxLookAndFeels.RootLookAndFeel.SkinPainter.DefaultContentTextColor;
   MTDM.ClearFieldValues;
   VBBaseDM.MadeChanges := False;
+  btnOK.Enabled :=  VBBaseDM.MadeChanges;
 end;
 
 procedure TBaseCustomerEditFrm.FormShow(Sender: TObject);
