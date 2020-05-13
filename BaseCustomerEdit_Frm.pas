@@ -7,7 +7,7 @@ uses
   System.Classes, Vcl.Graphics, Vcl.ImgList, cxImageList, Vcl.ActnList,
   Vcl.Controls, Vcl.Dialogs, Vcl.Menus, Vcl.StdCtrls, System.Actions,
 
-  BaseLayout_Frm,
+  BaseLayout_Frm, VBBase_DM,
 
   cxGraphics, cxControls, cxLookAndFeels, cxLookAndFeelPainters, dxSkinsCore,
   dxSkinsDefaultPainters, System.ImageList, dxLayoutLookAndFeels, cxClasses,
@@ -44,6 +44,8 @@ type
   public
     { Public declarations }
     property ValidationError: Boolean read FValidationError write FValidationError;
+
+    procedure ValueChanged(Sender: TObject);
   end;
 
 var
@@ -57,8 +59,7 @@ implementation
 {$R *.dfm}
 
 uses
-  MT_DM,
-  VBBase_DM;
+  MT_DM;
 
 procedure TBaseCustomerEditFrm.FormCreate(Sender: TObject);
 begin
@@ -83,13 +84,21 @@ begin
   stySubTitle.Style.TextColor := cxLookAndFeels.RootLookAndFeel.SkinPainter.DefaultContentTextColor;
   MTDM.ClearFieldValues;
   VBBaseDM.MadeChanges := False;
-  btnOK.Enabled :=  VBBaseDM.MadeChanges;
+  btnOK.Enabled := VBBaseDM.MadeChanges;
 end;
 
 procedure TBaseCustomerEditFrm.FormShow(Sender: TObject);
 begin
   inherited;
   Screen.Cursor := crDefault;
+end;
+
+procedure TBaseCustomerEditFrm.ValueChanged(Sender: TObject);
+begin
+  if not VBBaseDM.MadeChanges then
+    VBBaseDM.MadeChanges := True;
+
+  btnOK.Enabled := VBBaseDM.MadeChanges;
 end;
 
 end.
