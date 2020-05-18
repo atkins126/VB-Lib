@@ -69,7 +69,7 @@ type
     function ExecuteSQLCommand(Request: string): string;
     function ExecuteStoredProcedure(ProcedureName, ParameterList: string): string;
     function EchoTheString(Request: string; var Response: string): string;
-    function InsertRecord(Request: string; var Response: string): string;
+    function ModifyRecord(Request: string; var Response: string): string;
 
     procedure DataModuleCreate(Sender: TObject);
     procedure DataModuleDestroy(Sender: TObject);
@@ -129,6 +129,7 @@ type
     procedure CalculateFieldValues(DataSet: TFDMemTable);
     procedure BuildInsertStatement(TagValue: Integer; var FieldList, FieldValues: string; DataSet: TFDMemTable);
     procedure BuildUpdateStatement(TagValue: Integer; var FieldListValues, WhereClause: string; DataSet: TFDMemTable);
+    function GetSkinFromRegistry: string;
   end;
 
 var
@@ -227,9 +228,9 @@ begin
   Result := StrToInt(FClient.GetUseCount(Request));
 end;
 
-function TVBBaseDM.InsertRecord(Request: string; var Response: string): string;
+function TVBBaseDM.ModifyRecord(Request: string; var Response: string): string;
 begin
-  Result := FClient.InsertRecord(Request, Response);
+  Result := FClient.ModifyRecord(Request, Response);
 end;
 
 function TVBBaseDM.GetShellResource: TShellResource;
@@ -274,12 +275,33 @@ begin
     Result.ConnectionDefinitionFileName := RegKey.ReadString('Connection Definition File Name');
 
     RegKey.CloseKey;
+    GetSkinFromRegistry;
+
+//    RegKey.OpenKey(KEY_USER_PREFERENCES, True);
+//
+//    if not RegKey.ValueExists('Skin Name') then
+//      RegKey.WriteString('Skin Name', DEFAULT_SKIN_NAME);
+//
+//    Result.SkinName := RegKey.ReadString('Skin Name');
+//    RegKey.CloseKey;
+  finally
+    RegKey.Free;
+  end;
+end;
+
+function TVBBaseDM.GetSkinFromRegistry: string;
+var
+  RegKey: TRegistry;
+begin
+  try
+    RegKey := TRegistry.Create(KEY_ALL_ACCESS or KEY_WRITE or KEY_WOW64_64KEY);
+    RegKey.RootKey := HKEY_CURRENT_USER;
     RegKey.OpenKey(KEY_USER_PREFERENCES, True);
 
     if not RegKey.ValueExists('Skin Name') then
       RegKey.WriteString('Skin Name', DEFAULT_SKIN_NAME);
 
-    Result.SkinName := RegKey.ReadString('Skin Name');
+    Result := RegKey.ReadString('Skin Name');
     RegKey.CloseKey;
   finally
     RegKey.Free;
@@ -1111,7 +1133,6 @@ begin
           'VEHICLE_MAKE_ID, ' +
           'VEHICLE_MODEL, ' +
           'REG_NO, ' +
-          'RENEWAL_DATE, ' +
           'MAINTENANCE_PLAN, ' +
           'COMMENT';
 
@@ -1127,6 +1148,7 @@ begin
         if FormatDateTime('yyyy-MM-dd', DataSet.FieldByName('RENEWAL_DATE').AsDateTime) <> '1899-12-30' then
         begin
           FieldList := FieldList + ', RENEWAL_DATE';
+
           FieldValues := FieldValues + ', ' +
             AnsiQuotedStr(FormatDateTime('yyyy-MM-dd', DataSet.FieldByName('RENEWAL_DATE').AsDateTime), '''');
         end;
@@ -1238,8 +1260,242 @@ end;
 
 procedure TVBBaseDM.BuildUpdateStatement(TagValue: Integer; var FieldListValues,
   WhereClause: string; DataSet: TFDMemTable);
+var
+  ID: Integer;
 begin
-//
+  ID := 0;
+
+  if DataSet.FindField('ID') <> nil then
+  begin
+    ID := DataSet.FieldByName('ID').AsInteger;
+    WhereClause := ' WHERE ID = ' + ID.ToString;
+  end;
+
+  case TagValue of
+    // All of these tables have the same structure with only one updateable
+    // field named NAME.
+    5, 6, 11, 13, 14, 15, 19, 20, 23, 25, 39, 48, 52, 56:
+      FieldListValues := '"NAME" = ' + AnsiQuotedStr(DataSet.FieldByName('NAME').AsString, '''');
+
+    3: // Customer
+      begin
+        FieldListValues :=
+          'YEAR_END_MONTH_ID = ' + IntToStr(DataSet.FieldByName('YEAR_END_MONTH_ID').AsInteger) + ', ' +
+          'TAX_OFFICE_ID = ' + IntToStr(DataSet.FieldByName('TAX_OFFICE_ID').AsInteger) + ', ' +
+          'VAT_MONTH_ID = ' + IntToStr(DataSet.FieldByName('VAT_MONTH_ID').AsInteger) + ', ' +
+          'VAT_COUNTRY_ID = ' + IntToStr(DataSet.FieldByName('VAT_COUNTRY_ID').AsInteger) + ', ' +
+          'VAT_OFFICE_ID = ' + IntToStr(DataSet.FieldByName('VAT_OFFICE_ID').AsInteger) + ', ' +
+          'AR_MONTH_ID = ' + IntToStr(DataSet.FieldByName('AR_MONTH_ID').AsInteger) + ', ' +
+          'STATUS_ID = ' + IntToStr(DataSet.FieldByName('STATUS_ID').AsInteger) + ', ' +
+          'NAME = ' + AnsiQuotedStr(DataSet.FieldByName('NAME').AsString, '''') + ', ' +
+          'FIRST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
+          'LAST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''') + ', ' +
+          'INITIALS = ' + AnsiQuotedStr(DataSet.FieldByName('INITIALS').AsString, '''') + ', ' +
+          'TRADING_AS = ' + AnsiQuotedStr(DataSet.FieldByName('TRADING_AS').AsString, '''') + ', ' +
+          'BILL_TO = ' + AnsiQuotedStr(DataSet.FieldByName('BILL_TO').AsString, '''') + ', ' +
+          'CO_NO = ' + AnsiQuotedStr(DataSet.FieldByName('CO_NO').AsString, '''') + ', ' +
+          'TAX_NO = ' + AnsiQuotedStr(DataSet.FieldByName('TAX_NO').AsString, '''') + ', ' +
+          'VAT_NO = ' + AnsiQuotedStr(DataSet.FieldByName('VAT_NO').AsString, '''') + ', ' +
+          'VAT_CUSTOMS_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('VAT_CUSTOMS_CODE').AsString, '''') + ', ' +
+          'PAYE_NO = ' + AnsiQuotedStr(DataSet.FieldByName('PAYE_NO').AsString, '''') + ', ' +
+          'SDL_NO = ' + AnsiQuotedStr(DataSet.FieldByName('SDL_NO').AsString, '''') + ', ' +
+          'WC_NO = ' + AnsiQuotedStr(DataSet.FieldByName('WC_NO').AsString, '''') + ', ' +
+          'PASTEL_ACC_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('PASTEL_ACC_CODE').AsString, '''') + ', ' +
+          'VB_TAX_ACC_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('VB_TAX_ACC_CODE').AsString, '''') + ', ' +
+          'IS_PROV_TAX_PAYER = ' + IntToStr(DataSet.FieldByName('IS_PROV_TAX_PAYER').AsInteger) + ', ' +
+          'HAS_LIVING_WILL = ' + IntToStr(DataSet.FieldByName('HAS_LIVING_WILL').AsInteger) + ', ' +
+          'IS_ORGAN_DONOR = ' + IntToStr(DataSet.FieldByName('IS_ORGAN_DONOR').AsInteger) + ', ' +
+          'IS_ACTIVE = ' + IntToStr(DataSet.FieldByName('IS_ACTIVE').AsInteger) + ', ' +
+          'EFILING = ' + AnsiQuotedStr(DataSet.FieldByName('EFILING').AsString, '''') + ', ' +
+          'EF_USER_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('EF_USER_NAME').AsString, '''') + ', ' +
+          'EF_PASSWORD = ' + AnsiQuotedStr(DataSet.FieldByName('EF_PASSWORD').AsString, '''') + ', ' +
+          'CUSTOMER_GROUP_ID = ' + IntToStr(DataSet.FieldByName('CUSTOMER_GROUP_ID').AsInteger) + ', ' +
+          'UIF_NO = ' + AnsiQuotedStr(DataSet.FieldByName('UIF_NO').AsString, '''');
+
+        if FormatDateTime('yyyy-MM-dd', DataSet.FieldByName('AR_COMPLETION_DATE').AsDateTime) <> '1899-12-30' then
+          FieldListValues := FieldListValues + ', AR_COMPLETION_DATE = ' +
+            AnsiQuotedStr(FormatDateTime('yyyy-MM-dd', DataSet.FieldByName('AR_COMPLETION_DATE').AsDateTime), '''')
+      end;
+
+    4: // Address
+      begin
+        FieldListValues :=
+          'PHYSICAL1 = ' + AnsiQuotedStr(DataSet.FieldByName('PHYSICAL1').AsString, '''') + ', ' +
+          'PHYSICAL2 = ' + AnsiQuotedStr(DataSet.FieldByName('PHYSICAL2').AsString, '''') + ', ' +
+          'PHYSICAL3 = ' + AnsiQuotedStr(DataSet.FieldByName('PHYSICAL3').AsString, '''') + ', ' +
+          'PHYSICAL4 = ' + AnsiQuotedStr(DataSet.FieldByName('PHYSICAL4').AsString, '''') + ', ' +
+          'PHYSICAL_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('PHYSICAL_CODE').AsString, '''') + ', ' +
+          'POSTAL1 = ' + AnsiQuotedStr(DataSet.FieldByName('POSTAL1').AsString, '''') + ', ' +
+          'POSTAL2 = ' + AnsiQuotedStr(DataSet.FieldByName('POSTAL2').AsString, '''') + ', ' +
+          'POSTAL3 = ' + AnsiQuotedStr(DataSet.FieldByName('POSTAL3').AsString, '''') + ', ' +
+          'POSTAL4 = ' + AnsiQuotedStr(DataSet.FieldByName('POSTAL4').AsString, '''') + ', ' +
+          'POSTAL_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('POSTAL_CODE').AsString, '''') + ', ' +
+          'BILLING1 = ' + AnsiQuotedStr(DataSet.FieldByName('BILLING1').AsString, '''') + ', ' +
+          'BILLING2 = ' + AnsiQuotedStr(DataSet.FieldByName('BILLING2').AsString, '''') + ', ' +
+          'BILLING3 = ' + AnsiQuotedStr(DataSet.FieldByName('BILLING3').AsString, '''') + ', ' +
+          'BILLING4 = ' + AnsiQuotedStr(DataSet.FieldByName('BILLING4').AsString, '''') + ', ' +
+          'BILLING_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('BILLING_CODE').AsString, '''');
+      end;
+
+    7: // Banking details
+      begin
+        FieldListValues :=
+          'BANK_ID = ' + IntToStr(DataSet.FieldByName('BANK_ID').AsInteger) + ', ' +
+          'BRANCH_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('BRANCH_CODE').AsString, '''') + ', ' +
+          'ACCOUNT_TYPE_ID = ' + IntToStr(DataSet.FieldByName('ACCOUNT_TYPE_ID').AsInteger) + ', ' +
+          'ACCOUNT_NO = ' + AnsiQuotedStr(DataSet.FieldByName('ACCOUNT_NO').AsString, '''') + ', ' +
+          'FIRST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
+          'LAST_NAME =  ' + AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''');
+      end;
+
+    8: // Beneficiary
+      begin
+        FieldListValues :=
+          'FIRST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
+          'LAST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''') + ', ' +
+          'MOBILE_PHONE = ' + AnsiQuotedStr(DataSet.FieldByName('MOBILE_PHONE').AsString, '''') + ', ' +
+          'EMAIL_ADDRESS = ' + AnsiQuotedStr(DataSet.FieldByName('EMAIL_ADDRESS').AsString, '''') + ', ' +
+          'SALUTATION_ID = ' + IntToStr(DataSet.FieldByName('SALUTATION_ID').AsInteger);
+      end;
+
+    9: // Company contact details
+      begin
+        FieldListValues :=
+          'CONTACT_TYPE_ID = ' + IntToStr(DataSet.FieldByName('CONTACT_TYPE_ID').AsInteger) + ', ' +
+          'CONTACT_PERSON_ID = ' + IntToStr(DataSet.FieldByName('CONTACT_PERSON_ID').AsInteger) + ', ' +
+          '"VALUE" = ' + AnsiQuotedStr(DataSet.FieldByName('VALUE').AsString, '''') + ', ' +
+          'COMMENT = ' + AnsiQuotedStr(DataSet.FieldByName('COMMENT').AsString, '''');
+      end;
+
+    10: // Contact person
+      begin
+        FieldListValues :=
+          'SALUTATION_ID = ' + IntToStr(DataSet.FieldByName('SALUTATION_ID').AsInteger) + ', ' +
+          'FIRST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
+          'LAST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''') + ', ' +
+          'INITIALS = ' + AnsiQuotedStr(DataSet.FieldByName('INITIALS').AsString, '''') + ', ' +
+          'OTHER_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('OTHER_NAME').AsString, '''') + ', ' +
+          'DOB = ' + AnsiQuotedStr(DataSet.FieldByName('DOB').AsString, '''') + ', ' +
+          'ID_NUMBER = ' + AnsiQuotedStr(DataSet.FieldByName('ID_NUMBER').AsString, '''') + ', ' +
+          'PASSPORT_NUMBER = ' + AnsiQuotedStr(DataSet.FieldByName('PASSPORT_NUMBER').AsString, '''') + ', ' +
+          'IS_PRIMARY_CONTACT = ' + IntToStr(DataSet.FieldByName('IS_PRIMARY_CONTACT').AsInteger) + ', ' +
+          'JOB_FUNCTION_ID = ' + IntToStr(DataSet.FieldByName('JOB_FUNCTION_ID').AsInteger);
+      end;
+
+    12: // Country
+      begin
+        FieldListValues :=
+          'NAME = ' + AnsiQuotedStr(DataSet.FieldByName('NAME').AsString, '''') + ', ' +
+          'DIALING_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('DIALING_CODE').AsString, '''');
+      end;
+
+    16: // Director
+      begin
+        FieldListValues :=
+          'SALUTATION_ID = ' + IntToStr(DataSet.FieldByName('SALUTATION_ID').AsInteger) + ', ' +
+          'FIRST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
+          'LAST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''') + ', ' +
+          'MIDDLE_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('MIDDLE_NAME').AsString, '''') + ', ' +
+          'TAX_NO = ' + AnsiQuotedStr(DataSet.FieldByName('TAX_NO').AsString, '''') + ', ' +
+          'MOBILE_PHONE = ' + AnsiQuotedStr(DataSet.FieldByName('MOBILE_PHONE').AsString, '''') + ', ' +
+          'EMAIL_ADDRESS = ' + AnsiQuotedStr(DataSet.FieldByName('EMAIL_ADDRESS').AsString, '''');
+      end;
+
+    22: // Price list
+      begin
+        FieldListValues :=
+          'RATE_UNIT_ID = ' + IntToStr(DataSet.FieldByName('RATE_UNIT_ID').AsInteger) + ', ' +
+          'NAME = ' + AnsiQuotedStr(DataSet.FieldByName('NAME').AsString, '''') + ', ' +
+          'RATE = ' + FloatToStr(DataSet.FieldByName('RATE').AsFloat) + ', ' +
+          'INVOICE_DESCRIPTION = ' + AnsiQuotedStr(DataSet.FieldByName('INVOICE_DESCRIPTION').AsString, '''') + ', ' +
+          'DESCRIPTION = ' + AnsiQuotedStr(DataSet.FieldByName('DESCRIPTION').AsString, '''');
+      end;
+
+    37: // Contact detail for pserons
+      begin
+        FieldListValues :=
+          'CONTACT_TYPE_ID = ' + IntToStr(DataSet.FieldByName('CONTACT_TYPE_ID').AsInteger) + ', ' +
+          'CUSTOMER_ID = ' + IntToStr(DataSet.FieldByName('CUSTOMER_ID').AsInteger) + ', ' +
+          'CONTACT_PERSON_ID = ' + IntToStr(DataSet.FieldByName('CONTACT_PERSON_ID').AsInteger) + ', ' +
+          '"VALUE" = ' + AnsiQuotedStr(DataSet.FieldByName('VALUE').AsString, '''') + ', ' +
+          'COMMENT = ' + AnsiQuotedStr(DataSet.FieldByName('COMMENT').AsString, '''');
+      end;
+
+    38: // Rate uint
+      begin
+        FieldListValues :=
+          '"NAME" = ' + AnsiQuotedStr(DataSet.FieldByName('NAME').AsString, '''') + ', ' +
+          'ABBREVIATION = ' + AnsiQuotedStr(DataSet.FieldByName('ABBREVIATION').AsString, '''');
+      end;
+
+    49: // Vehicle
+      begin
+        FieldListValues :=
+          'THE_YEAR = ' + IntToStr(DataSet.FieldByName('THE_YEAR').AsInteger) + ', ' +
+          'VEHICLE_MAKE_ID = ' + IntToStr(DataSet.FieldByName('VEHICLE_MAKE_ID').AsInteger) + ', ' +
+          'VEHICLE_MODEL = ' + AnsiQuotedStr(DataSet.FieldByName('VEHICLE_MODEL').AsString, '''') + ', ' +
+          'REG_NO = ' + AnsiQuotedStr(DataSet.FieldByName('REG_NO').AsString, '''') + ', ' +
+          'MAINTENANCE_PLAN = ' + IntToStr(DataSet.FieldByName('MAINTENANCE_PLAN').AsInteger) + ', ' +
+          'COMMENT = ' + AnsiQuotedStr(DataSet.FieldByName('COMMENT').AsString, '''');
+
+        if FormatDateTime('yyyy-MM-dd', DataSet.FieldByName('RENEWAL_DATE').AsDateTime) <> '1899-12-30' then
+          FieldListValues := FieldListValues +
+            ', RENEWAL_DATE = ' + AnsiQuotedStr(FormatDateTime('yyyy-MM-dd', DataSet.FieldByName('RENEWAL_DATE').AsDateTime), '''');
+      end;
+
+    50: // Trustee
+      begin
+        FieldListValues :=
+          'FIRST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
+          'LAST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''') + ', ' +
+          'SALUTATION_ID = ' + IntToStr(DataSet.FieldByName('SALUTATION_ID').AsInteger) + ', ' +
+          'MOBILE_PHONE = ' + AnsiQuotedStr(DataSet.FieldByName('MOBILE_PHONE').AsString, '''') + ', ' +
+          'EMAIL_ADDRESS = ' + AnsiQuotedStr(DataSet.FieldByName('EMAIL_ADDRESS').AsString, '''');
+      end;
+
+    74: // Director of company
+      begin
+        FieldListValues :=
+          'DIRECTOR_ID = ' + IntToStr(DataSet.FieldByName('DIRECTOR_ID').AsInteger);
+      end;
+
+    76: // Shareholder
+      begin
+        FieldListValues :=
+          'SALUTATION_ID = ' + IntToStr(DataSet.FieldByName('SALUTATION_ID').AsInteger) + ', ' +
+          'FIRST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
+          'LAST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''') + ', ' +
+          'MOBILE_PHONE = ' + AnsiQuotedStr(DataSet.FieldByName('MOBILE_PHONE').AsString, '''') + ', ' +
+          'EMAIL_ADDRESS = ' + AnsiQuotedStr(DataSet.FieldByName('EMAIL_ADDRESS').AsString, '''') + ', ' +
+          'PERCENT_SHARE = ' + AnsiQuotedStr(DataSet.FieldByName('PERCENT_SHARE').AsString, '''');
+      end;
+
+    77: // Heir
+      begin
+        FieldListValues :=
+          'SALUTATION_ID = ' + IntToStr(DataSet.FieldByName('SALUTATION_ID').AsInteger) + ', ' +
+          'FIRST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
+          'LAST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''') + ', ' +
+          'ID_NUMBER = ' + AnsiQuotedStr(DataSet.FieldByName('ID_NUMBER').AsString, '''') + ', ' +
+          'PHYSICAL1 = ' + AnsiQuotedStr(DataSet.FieldByName('PHYSICAL1').AsString, '''') + ', ' +
+          'PHYSICAL2 = ' + AnsiQuotedStr(DataSet.FieldByName('PHYSICAL2').AsString, '''') + ', ' +
+          'PHYSICAL3 = ' + AnsiQuotedStr(DataSet.FieldByName('PHYSICAL3').AsString, '''') + ', ' +
+          'PHYSICAL4 = ' + AnsiQuotedStr(DataSet.FieldByName('PHYSICAL4').AsString, '''') + ', ' +
+          'PHYSICAL_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('PHYSICAL_CODE').AsString, '''') + ', ' +
+          'POSTAL1 = ' + AnsiQuotedStr(DataSet.FieldByName('POSTAL1').AsString, '''') + ', ' +
+          'POSTAL2 = ' + AnsiQuotedStr(DataSet.FieldByName('POSTAL2').AsString, '''') + ', ' +
+          'POSTAL3 = ' + AnsiQuotedStr(DataSet.FieldByName('POSTAL3').AsString, '''') + ', ' +
+          'POSTAL4 = ' + AnsiQuotedStr(DataSet.FieldByName('POSTAL4').AsString, '''') + ', ' +
+          'POSTAL_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('POSTAL_CODE').AsString, '''') + ', ' +
+          'ACC_HOLDER_SALUTATION_ID = ' + AnsiQuotedStr(DataSet.FieldByName('ACC_HOLDER_SALUTATION_ID').AsString, '''') + ', ' +
+          'ACC_HOLDER_FIRST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('ACC_HOLDER_FIRST_NAME').AsString, '''') + ', ' +
+          'ACC_HOLDER_LAST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('ACC_HOLDER_LAST_NAME').AsString, '''') + ', ' +
+          'BANK_ID = ' + IntToStr(DataSet.FieldByName('BANK_ID').AsInteger) + ', ' +
+          'BRANCH_CODE = ' + AnsiQuotedStr(DataSet.FieldByName('BRANCH_CODE').AsString, '''') + ', ' +
+          'ACCOUNT_TYPE_ID = ' + IntToStr(DataSet.FieldByName('ACCOUNT_TYPE_ID').AsInteger) + ', ' +
+          'ACCOUNT_NO = ' + AnsiQuotedStr(DataSet.FieldByName('ACCOUNT_NO').AsString, '''');
+      end;
+  end;
 end;
 
 end.

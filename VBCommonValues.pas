@@ -96,7 +96,7 @@ const
   EKEY1 = 5376149;
   EKEY2 = 3261854;
 
-  MASTER_DATASET_COUNT = 18;
+  MASTER_DATASET_COUNT = 19;
 
   // XML Formatt specifiers
   EMPTY_STRING = '';
@@ -122,7 +122,7 @@ const
   SQL_COLLATE = ' COLLATE SQL_Latin1_General_CP1_CI_AS ';
 
   // Default skin name
-  DEFAULT_SKIN_NAME = 'MoneyTwins';
+  DEFAULT_SKIN_NAME = 'Office2010Blue';
   SKIN_RESOURCE_FILE = 'AllSkins.skinres';
 
   // Default registry constants
@@ -209,6 +209,7 @@ const
   WM_STATE_CHANGE = WM_USER + 506;
   WM_DOWNLOAD_PROGRESS = WM_USER + 507;
   WM_POST_DATA_ERROR = WM_USER + 508;
+  WM_CONTACT_TYPE = WM_USER + 509;
 
 //-------------------    SQL Server Errror Messages     ------------------------
 { Error No  Severity Message

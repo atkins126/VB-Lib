@@ -7,7 +7,7 @@ uses
   System.Classes, Vcl.Graphics, Vcl.ImgList, cxImageList, Vcl.ActnList,
   Vcl.Controls, Vcl.Dialogs, Vcl.Menus, Vcl.StdCtrls, System.Actions,
 
-  BaseLayout_Frm, VBBase_DM,
+  BaseLayout_Frm, VBBase_DM, CommonValues,
 
   cxGraphics, cxControls, cxLookAndFeels, cxLookAndFeelPainters, dxSkinsCore,
   dxSkinsDefaultPainters, System.ImageList, dxLayoutLookAndFeels, cxClasses,
@@ -69,6 +69,8 @@ begin
 
   if MTDM.DetailIndex = 5 then
   begin
+  if VBBaseDM.DBAction = acInsert then
+
     lblSubTitle.DataBinding.DataSource := MTDM.dtsDirector;
     lblSubTitle.DataBinding.DataField := 'FULL_NAME';
   end
