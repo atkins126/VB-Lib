@@ -149,7 +149,6 @@ uses
 
 procedure TVBBaseDM.DataModuleCreate(Sender: TObject);
 begin
-  inherited;
 ////  FBeepFreq := 800;
 ////  FBeepDuration := 300;
 ////   GetLocaleFormatSettings is deprecated!!
@@ -167,7 +166,6 @@ end;
 
 procedure TVBBaseDM.DataModuleDestroy(Sender: TObject);
 begin
-  inherited;
   FreeAndNil(FClient);
 end;
 
@@ -191,6 +189,10 @@ begin
     ParamList := 'PARAMETER_LIST=' + ParameterList;
 
   DataSetList := GetMasterData(IDList, ParamList, Generatorname, Tablename, DataSetName);
+
+//  FResponse := '';
+//  DataSetList := FClient.GetData(IDList, ParameterList, Generatorname, Tablename, DataSetName, FResponse);
+
   if FResponse = 'NO_DATA' then
     Exit;
 

@@ -3,7 +3,7 @@ unit VBCommonValues;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages;
+  Winapi.Windows, Winapi.Messages, System.SysUtils;
 
 //  WinApi.Windows, WinApi.Messages;
 
@@ -35,8 +35,8 @@ type
   TUserRights = 1..255;
   TUserRightSet = set of TUserRights;
   TZCompressionLevel = (zcNone, zcFastest, zcDefault, zcMax);
-//  TApprovalActions = (apApprove, apUnApprove, apToggleApproval);
-//  TBillableActions = (abBillable, abNotBillable, abToggleBillable);
+  //  TApprovalActions = (apApprove, apUnApprove, apToggleApproval);
+  //  TBillableActions = (abBillable, abNotBillable, abToggleBillable);
   TFileExtensions = (xls, xlsx, doc, docx, mdb, accdb, pdf, jpg, png, Bitmap, bmp);
 
   TCustomerLinkDataset = (
@@ -79,15 +79,15 @@ type
 var
   FileExtension: TFileExtensions;
 
-{
-  $0080BFFF - Orange
-  $00FFB3B3 - Light Mauve
-  $009D9DFF - Light Pink
-  $80       - Maroon
-  $C6       - Red/Maroon
-  $C6FFC6 - Light Green
-  $B6EDFA - Light Yellow
-}
+  {
+    $0080BFFF - Orange
+    $00FFB3B3 - Light Mauve
+    $009D9DFF - Light Pink
+    $80       - Maroon
+    $C6       - Red/Maroon
+    $C6FFC6 - Light Green
+    $B6EDFA - Light Yellow
+  }
 const
   Days: array[1..7] of string = ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
   LongMonths: array[1..12] of string = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December');
@@ -118,7 +118,7 @@ const
   // Drawing borders around grid cell.
   DRAW_CELL_BORDER = WM_APP + 300;
 
-// Genrate case insensitive queries in SQL Server.
+  // Genrate case insensitive queries in SQL Server.
   SQL_COLLATE = ' COLLATE SQL_Latin1_General_CP1_CI_AS ';
 
   // Default skin name
@@ -199,7 +199,7 @@ const
   VB_SHELLX_TCP_KEY_NAME = 'VB ShellX TCP Port';
   VB_SHELLX_HTTP_KEY_NAME = 'VB ShellX HTTP Port';
 
-// Messaging
+  // Messaging
   WM_USER_ID = WM_USER + 500;
   WM_DOWNLOAD_CAPTION = WM_USER + 501;
   WM_RECORD_ID = WM_USER + 502;
@@ -211,12 +211,12 @@ const
   WM_POST_DATA_ERROR = WM_USER + 508;
   WM_CONTACT_TYPE = WM_USER + 509;
 
-//-------------------    SQL Server Errror Messages     ------------------------
-{ Error No  Severity Message
-  2601      16       Cannot insert duplicate key row in object '%.*ls' with unique index '%.*ls'.
-  208       16       Invalid object name '%.*ls'.
-  515       16       Cannot insert the value NULL into column '%.*ls', table '%.*ls'; column does not allow nulls. %ls fails.
-}
+  //-------------------    SQL Server Errror Messages     ------------------------
+  { Error No  Severity Message
+    2601      16       Cannot insert duplicate key row in object '%.*ls' with unique index '%.*ls'.
+    208       16       Invalid object name '%.*ls'.
+    515       16       Cannot insert the value NULL into column '%.*ls', table '%.*ls'; column does not allow nulls. %ls fails.
+  }
   SQL_ERROR_2601 = 'Duplicate %s: %s not allowed. Transaction was rolled back';
   SQL_ERROR_208 = 'SQL server object name: %s does not exist.';
   SQL_ERROR_515 = 'Server error: %s';
@@ -263,10 +263,22 @@ const
 
   RELEASE_CARRY_FORWARD =
     ' UPDATE TIMESHEET SET ' +
-    ' RELEASE_CFWD_TO_PERIOD = %d, ' +
-    ' DATE_CFWD_RELEASED = %s, ' +
-    ' CARRY_FORWARD = 0, ' +
-    ' DATE_CARRIED_FORWARD = NULL ' +
+    ' RELEASE_TO_PERIOD = %d, ' +
+    ' DATE_RELEASED = %s, ' +
+    ' CARRY_FORWARD = 0 ' +
+    //    ' DATE_CARRIED_FORWARD = NULL ' +
+  ' WHERE ID IN(%s)';
+
+  REVERSE_RELEASED_ITEMS =
+    ' UPDATE TIMESHEET SET ' +
+    ' RELEASE_TO_PERIOD = 0, ' +
+    ' DATE_RELEASED = %s,' +
+    ' CARRY_FORWARD = 1 ' +
+    ' WHERE ID IN(%s)';
+
+  CHANGE_RELEASE_DATE =
+    ' UPDATE TIMESHEET SET ' +
+    ' RELEASE_TO_PERIOD = %d ' +
     ' WHERE ID IN(%s)';
 
   CARRY_FORWARD_STATUS_CHANGE =
@@ -274,8 +286,8 @@ const
     ' CARRY_FORWARD = 1, ' +
     ' DATE_CARRIED_FORWARD = %s, ' +
     ' INVOICE_ID = -1, ' +
-    ' DATE_CFWD_RELEASED = NULL, ' +
-    ' RELEASE_CFWD_TO_PERIOD = 0 ' +
+    ' DATE_RELEASED = NULL, ' +
+    ' RELEASE_TO_PERIOD = 0 ' +
     ' WHERE ID IN(%s)';
 
   APPROVE_STATUS_CHANGE =
@@ -288,16 +300,16 @@ const
     ' BILLABLE = %d ' +
     ' WHERE ID IN(%s)';
 
-{
-SELECT SUM(C) AS ID_COUNT
-FROM (
-  SELECT COUNT(ID) AS C FROM BENEFICIARY WHERE SALUTATION_ID = 1
-  UNION ALL
-  SELECT COUNT(ID) AS C FROM CONTACT_PERSON WHERE SALUTATION_ID = 1
-  UNION ALL
-  SELECT COUNT(ID) AS C FROM DIRECTOR WHERE SALUTATION_ID = 1
-)
-}
+  {
+  SELECT SUM(C) AS ID_COUNT
+  FROM (
+    SELECT COUNT(ID) AS C FROM BENEFICIARY WHERE SALUTATION_ID = 1
+    UNION ALL
+    SELECT COUNT(ID) AS C FROM CONTACT_PERSON WHERE SALUTATION_ID = 1
+    UNION ALL
+    SELECT COUNT(ID) AS C FROM DIRECTOR WHERE SALUTATION_ID = 1
+  )
+  }
 
 implementation
 
