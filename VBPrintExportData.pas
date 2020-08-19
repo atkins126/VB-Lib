@@ -13,7 +13,7 @@ uses
   cxGrid, dxPrnDlg, cxGridExportLink, frxExportPDF,
 
 {$IFDEF VB}
-  VBProxyClass,
+  VBProxyClasses,
 {$ENDIF}
   FireDAC.Comp.Client;
 

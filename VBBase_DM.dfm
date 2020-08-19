@@ -5,7 +5,7 @@ inherited VBBaseDM: TVBBaseDM
     Params.Strings = (
       'DriverUnit=Data.DBXDataSnap'
       'HostName=localhost'
-      'Port=20256'
+      'Port=20220'
       'CommunicationProtocol=tcp/ip'
       'DatasnapContext=datasnap/'
       

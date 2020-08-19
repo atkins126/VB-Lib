@@ -74,7 +74,8 @@ type
     ftSalutation,
     ftStdActivity,
     ftTaxoffice,
-    ftVehicleMake);
+    ftVehicleMake,
+    ftDirector);
 
 var
   FileExtension: TFileExtensions;
@@ -181,14 +182,14 @@ const
   LOCAL_VB_SHELL_DS_SERVER = LOCAL_EXECUTABLE_ROOT_FOLDER + 'Servers\VBDSServerDebug.exe';
 
   // Default localhost port no's for connecting debug SOAP server to local machine.
-  VB_SHELL_TCP_PORT = '2010';
-  VB_SHELL_HTTP_PORT = '6010';
+  VB_SHELL_TCP_PORT = '2020';
+  VB_SHELL_HTTP_PORT = '2025';
 
   VB_SHELLX_TCP_PORT = '20255';
   VB_SHELLX_HTTP_PORT = '20260';
 
-  VB_SHELL_DEV_TCP_PORT = '20256';
-  VB_SHELL_DEV_HTTP_PORT = '20261';
+  VB_SHELL_DEV_TCP_PORT = '2030';
+  VB_SHELL_DEV_HTTP_PORT = '2035';
 
   VB_SHELL_DEV_TCP_KEY_NAME = 'VB Shell Dev TCP Port';
   VB_SHELL_DEV_HTTP_KEY_NAME = 'VB Shell Dev HTTP Port';
@@ -210,6 +211,7 @@ const
   WM_DOWNLOAD_PROGRESS = WM_USER + 507;
   WM_POST_DATA_ERROR = WM_USER + 508;
   WM_CONTACT_TYPE = WM_USER + 509;
+  WM_SYNCH_DATA = WM_USER + 510;
 
   //-------------------    SQL Server Errror Messages     ------------------------
   { Error No  Severity Message
@@ -220,6 +222,8 @@ const
   SQL_ERROR_2601 = 'Duplicate %s: %s not allowed. Transaction was rolled back';
   SQL_ERROR_208 = 'SQL server object name: %s does not exist.';
   SQL_ERROR_515 = 'Server error: %s';
+
+  DUPLICATE_MESSAGE = 'Attempt to store duplicate value in table %s. Duplicate value: %s not allowed.';
 
   //----------------------------------------------------------------------------
 

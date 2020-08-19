@@ -5,9 +5,9 @@ interface
 uses
   System.SysUtils, System.Classes, Data.DBXDataSnap, Data.DBXCommon, Vcl.Forms,
   Vcl.Controls, System.Win.Registry, System.ImageList, Vcl.ImgList, Winapi.Windows,
-  System.IOUtils, System.Variants, System.DateUtils,
+  System.IOUtils, System.Variants, System.DateUtils, System.StrUtils,
 
-  VBProxyClass, Base_DM, CommonValues, VBCommonValues,
+  VBProxyClasses, Base_DM, CommonValues, VBCommonValues,
 
   Data.DB, Data.SqlExpr, Data.FireDACJSONReflect, DataSnap.DSCommon, IPPeerClient,
 
@@ -57,18 +57,17 @@ type
     function UpdatesPending(DataSetArray: TDataSetArray): Boolean;
     function GetMasterData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName: string): TFDJSONDataSets;
     procedure GetData(ID: Integer; DataSet: TFDMemTable; DataSetName, ParameterList, FileName, Generatorname, Tablename: string);
-    function GetNextID(TableName: string): Integer;
+    function GetID(TableName: string; IDRank: Integer): Integer;
     procedure PopulateUserData;
     function CopyRecord(DataSet: TFDMemTable): OleVariant;
-    function GetuseCount(Request: string): Integer;
+    function GetUseCount(Request: string): Integer;
 
-//    function GetDelta(DataSetArray: TDataSetArray): TFDJSONDeltas;
+    //    function GetDelta(DataSetArray: TDataSetArray): TFDJSONDeltas;
     procedure PostData(DataSet: TFDMemTable);
-    procedure ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string; ScriptID: Integer);
+    procedure ApplyUpdates(DataSet: TFDMemTable; DataSetArray: TDataSetArray; GeneratorName, TableName: string; ScriptID: Integer);
     procedure CancelUpdates(DataSetArray: TDataSetArray);
     function ExecuteSQLCommand(Request: string): string;
-    function ExecuteStoredProcedure(ProcedureName, ParameterList: string): string;
-    function EchoTheString(Request: string; var Response: string): string;
+    function ExecuteStoredProcedure(ProcedureName, ParameterList, ParameterValues, DelimChar: string): string;
     function ModifyRecord(Request: string; var Response: string): string;
 
     procedure DataModuleCreate(Sender: TObject);
@@ -101,6 +100,9 @@ type
     FMyDataSet: TFDMemTable;
     FMyDataSource: TDataSource;
     FPostError: Boolean;
+    FOutputValues: string;
+    FIsCustomer: Boolean;
+    FLastID: Integer;
   public
     { Public declarations }
     DataSetArray: TDataSetArray;
@@ -119,8 +121,12 @@ type
     property MyDataSet: TFDMemTable read FMyDataSet write FMyDataSet;
     property MyDataSource: TDataSource read FMyDataSource write FMyDataSource;
     property PostError: Boolean read FPostError write FPostError;
-//    property DataSetArray: TDataSetArray read FDataSetArray write FDataSetArray;
-//    property UserData: TUserData read FUserData write FUserData;
+    property OutputValues: string read FOutputValues write FOutputValues;
+    property IsCustomer: Boolean read FIsCustomer write FIsCustomer;
+    property LastID: Integer read FLastID write FLastID;
+
+    //    property DataSetArray: TDataSetArray read FDataSetArray write FDataSetArray;
+    //    property UserData: TUserData read FUserData write FUserData;
 
     function FoundNewVersion: Boolean;
     function CheckForUpdates(AppID: Integer; AppName: string): Boolean;
@@ -130,6 +136,7 @@ type
     procedure BuildInsertStatement(TagValue: Integer; var FieldList, FieldValues: string; DataSet: TFDMemTable);
     procedure BuildUpdateStatement(TagValue: Integer; var FieldListValues, WhereClause: string; DataSet: TFDMemTable);
     function GetSkinFromRegistry: string;
+    function GetFieldValue(Request: string; FieldTypeID: Integer): string;
   end;
 
 var
@@ -149,19 +156,19 @@ uses
 
 procedure TVBBaseDM.DataModuleCreate(Sender: TObject);
 begin
-////  FBeepFreq := 800;
-////  FBeepDuration := 300;
-////   GetLocaleFormatSettings is deprecated!!
-////  GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT, FAFormatSettings);
-////  FAFormatSettings := TFormatSettings.Create(LOCALE_SYSTEM_DEFAULT);
-//  FAFormatSettings := TFormatSettings.Create('');
-//  FDateOrder := GetDateOrder(FAFormatSettings.ShortDateFormat);
-//
-//  case FDateOrder of
-//    doDMY: FDateStringFormat := 'dd/mm/yyyy';
-//    doMDY: FDateStringFormat := 'mm/dd/yyyy';
-//    doYMD: FDateStringFormat := 'yyyy-mm-dd';
-//  end;
+  ////  FBeepFreq := 800;
+  ////  FBeepDuration := 300;
+  ////   GetLocaleFormatSettings is deprecated!!
+  ////  GetLocaleFormatSettings(LOCALE_SYSTEM_DEFAULT, FAFormatSettings);
+  ////  FAFormatSettings := TFormatSettings.Create(LOCALE_SYSTEM_DEFAULT);
+  //  FAFormatSettings := TFormatSettings.Create('');
+  //  FDateOrder := GetDateOrder(FAFormatSettings.ShortDateFormat);
+  //
+  //  case FDateOrder of
+  //    doDMY: FDateStringFormat := 'dd/mm/yyyy';
+  //    doMDY: FDateStringFormat := 'mm/dd/yyyy';
+  //    doYMD: FDateStringFormat := 'yyyy-mm-dd';
+  //  end;
 end;
 
 procedure TVBBaseDM.DataModuleDestroy(Sender: TObject);
@@ -178,7 +185,7 @@ begin
   if DataSet.Active then
   begin
     DataSet.Close;
-//    DataSet.EmptyDataSet;
+    //    DataSet.EmptyDataSet;
   end;
 
   IDList := 'SQL_STATEMENT_ID=' + ID.ToString;
@@ -190,8 +197,8 @@ begin
 
   DataSetList := GetMasterData(IDList, ParamList, Generatorname, Tablename, DataSetName);
 
-//  FResponse := '';
-//  DataSetList := FClient.GetData(IDList, ParameterList, Generatorname, Tablename, DataSetName, FResponse);
+  //  FResponse := '';
+  //  DataSetList := FClient.GetData(IDList, ParameterList, Generatorname, Tablename, DataSetName, FResponse);
 
   if FResponse = 'NO_DATA' then
     Exit;
@@ -205,27 +212,56 @@ begin
   // InternalCalc fields.
   DataSet.Open;
   DataSet.AppendData(TFDJSONDataSetsReader.GetListValueByName(DataSetList, DataSetName));
-  {$IFDEF DEBUG}
+{$IFDEF DEBUG}
   DataSet.SaveToFile(FileName, sfXML);
-  {$ENDIF}
+{$ENDIF}
 end;
 
 function TVBBaseDM.GetMasterData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName: string): TFDJSONDataSets;
 //var
 //  Response: string;
 begin
-//  if FClient = nil then
-//    FClient := TLeaveServerMethodsClient.Create(BaseDM.sqlConnection.DBXConnection);
+  //  if FClient = nil then
+  //    FClient := TLeaveServerMethodsClient.Create(BaseDM.sqlConnection.DBXConnection);
   FResponse := '';
   Result := FClient.GetData(DataRequestList, ParameterList, Generatorname, Tablename, DataSetName, FResponse);
 end;
 
-function TVBBaseDM.GetNextID(TableName: string): Integer;
+function TVBBaseDM.GetID(TableName: string; IDRank: Integer): Integer;
 begin
-  Result := StrToInt(FClient.GetNextID(Tablename));
+  case IDRank of
+    0: Result := StrToInt(FClient.GetID(Tablename, 0));
+    1: Result := StrToInt(FClient.GetID(Tablename, 1));
+  end;
 end;
 
-function TVBBaseDM.GetuseCount(Request: string): Integer;
+function TVBBaseDM.GetFieldValue(Request: string; FieldTypeID: Integer): string;
+var
+  Response: string;
+begin
+  //  TFieldType = (ftUnknown, ftString, ftSmallint, ftInteger, ftWord, // 0..4
+  //    ftBoolean, ftFloat, ftCurrency, ftBCD, ftDate, ftTime, ftDateTime, // 5..11
+  //    ftBytes, ftVarBytes, ftAutoInc, ftBlob, ftMemo, ftGraphic, ftFmtMemo, // 12..18
+  //    ftParadoxOle, ftDBaseOle, ftTypedBinary, ftCursor, ftFixedChar, ftWideString, // 19..24
+  //    ftLargeint, ftADT, ftArray, ftReference, ftDataSet, ftOraBlob, ftOraClob, // 25..31
+  //    ftVariant, ftInterface, ftIDispatch, ftGuid, ftTimeStamp, ftFMTBcd, // 32..37
+  //    ftFixedWideChar, ftWideMemo, ftOraTimeStamp, ftOraInterval, // 38..41
+  //    ftLongWord, ftShortint, ftByte, ftExtended, ftConnection, ftParams, ftStream, //42..48
+  //    ftTimeStampOffset, ftObject, ftSingle); //49..51
+
+  Response := '';
+
+//  case FieldTypeID of
+//    ftString, ftWideString: FieldTypeID := 0;
+//    ftSmallint, ftInteger, ftWord, ftBoolean: FieldTypeID := 1;
+//    ftFloat, ftCurrency, ftExtended, ftBCD: FieldTypeID := 2;
+//    ftDate, ftTime, ftDateTime: FieldTypeID := 3;
+//  end;
+
+  Result := FClient.GetFieldValue(Request, FieldTypeID, Response);
+end;
+
+function TVBBaseDM.GetUseCount(Request: string): Integer;
 begin
   Result := StrToInt(FClient.GetUseCount(Request));
 end;
@@ -238,35 +274,36 @@ end;
 function TVBBaseDM.GetShellResource: TShellResource;
 var
   RegKey: TRegistry;
-//  SL: TStringList;
+  //  SL: TStringList;
 begin
-//  RegKey := TRegistry.Create(KEY_ALL_ACCESS or KEY_WRITE or KEY_WOW64_64KEY);
-//  SL := RUtils.CreateStringList(SL, COMMA);
+  //  RegKey := TRegistry.Create(KEY_ALL_ACCESS or KEY_WRITE or KEY_WOW64_64KEY);
+  //  SL := RUtils.CreateStringList(SL, COMMA);
   TDirectory.CreateDirectory('C:\Data');
   RegKey := TRegistry.Create(KEY_ALL_ACCESS or KEY_WRITE or KEY_WOW64_64KEY);
   RegKey.RootKey := HKEY_CURRENT_USER;
+
   try
     RegKey.OpenKey(KEY_RESOURCE, True);
     Result.RootFolder := ROOT_FOLDER;
-//    Result.RootFolder := RUtils.AddChar(RUtils.GetShellFolderName(CSIDL_COMMON_DOCUMENTS), '\', rpEnd) + ROOT_DATA_FOLDER;
-//    SL.Add(FormatDateTime('dd/MM/yyyy hh:mm:ss', Now) + 'Before writing Root Folder value to registry');
-//    SL.SaveToFile('C:\Data\RegLog.txt');
+    //    Result.RootFolder := RUtils.AddChar(RUtils.GetShellFolderName(CSIDL_COMMON_DOCUMENTS), '\', rpEnd) + ROOT_DATA_FOLDER;
+    //    SL.Add(FormatDateTime('dd/MM/yyyy hh:mm:ss', Now) + 'Before writing Root Folder value to registry');
+    //    SL.SaveToFile('C:\Data\RegLog.txt');
 
     try
       RegKey.WriteString('Root Folder', Result.RootFolder);
     except
       on E: Exception do
       begin
-//        SL.Add(FormatDateTime('dd/MM/yyyy hh:mm:ss', Now) + 'Exception: ' + E.Message);
-//        SL.SaveToFile('C:\Data\RegLog.txt');
+        //        SL.Add(FormatDateTime('dd/MM/yyyy hh:mm:ss', Now) + 'Exception: ' + E.Message);
+        //        SL.SaveToFile('C:\Data\RegLog.txt');
       end;
     end;
 
-//    SL.Add(FormatDateTime('dd/MM/yyyy hh:mm:ss', Now) + 'After successfully writing Root Folder value to registry');
-//    SL.SaveToFile('C:\Data\RegLog.txt');
+    //    SL.Add(FormatDateTime('dd/MM/yyyy hh:mm:ss', Now) + 'After successfully writing Root Folder value to registry');
+    //    SL.SaveToFile('C:\Data\RegLog.txt');
 
-//    if not RegKey.ValueExists('Resource') then
-//      RegKey.WriteString('Resource', '\\VBSERVER\Apps\VB\');
+    //    if not RegKey.ValueExists('Resource') then
+    //      RegKey.WriteString('Resource', '\\VBSERVER\Apps\VB\');
 
     Result.ResourceFolder := RegKey.ReadString('Resource');
     Result.ReportFolder := RegKey.ReadString('Reports');
@@ -277,15 +314,15 @@ begin
     Result.ConnectionDefinitionFileName := RegKey.ReadString('Connection Definition File Name');
 
     RegKey.CloseKey;
-    GetSkinFromRegistry;
+    Result.SkinName := GetSkinFromRegistry;
 
-//    RegKey.OpenKey(KEY_USER_PREFERENCES, True);
-//
-//    if not RegKey.ValueExists('Skin Name') then
-//      RegKey.WriteString('Skin Name', DEFAULT_SKIN_NAME);
-//
-//    Result.SkinName := RegKey.ReadString('Skin Name');
-//    RegKey.CloseKey;
+    //    RegKey.OpenKey(KEY_USER_PREFERENCES, True);
+    //
+    //    if not RegKey.ValueExists('Skin Name') then
+    //      RegKey.WriteString('Skin Name', DEFAULT_SKIN_NAME);
+    //
+    //    Result.SkinName := RegKey.ReadString('Skin Name');
+    //    RegKey.CloseKey;
   finally
     RegKey.Free;
   end;
@@ -295,10 +332,11 @@ function TVBBaseDM.GetSkinFromRegistry: string;
 var
   RegKey: TRegistry;
 begin
+  RegKey := TRegistry.Create(KEY_ALL_ACCESS or KEY_WRITE or KEY_WOW64_64KEY);
+  RegKey.RootKey := HKEY_CURRENT_USER;
+  RegKey.OpenKey(KEY_USER_PREFERENCES, True);
+
   try
-    RegKey := TRegistry.Create(KEY_ALL_ACCESS or KEY_WRITE or KEY_WOW64_64KEY);
-    RegKey.RootKey := HKEY_CURRENT_USER;
-    RegKey.OpenKey(KEY_USER_PREFERENCES, True);
 
     if not RegKey.ValueExists('Skin Name') then
       RegKey.WriteString('Skin Name', DEFAULT_SKIN_NAME);
@@ -334,11 +372,10 @@ begin
   SetLength(DataSetArray, 1);
   DataSetArray[0] := TFDMemTable(DataSet);
 
-  ApplyUpdates(DataSetArray, TFDMemTable(DataSet).UpdateOptions.Generatorname,
-    TFDMemTable(DataSet).UpdateOptions.UpdateTableName,
-    TFDMemTable(DataSet).Tag);
+  ApplyUpdates(DataSet, DataSetArray, TFDMemTable(DataSet).UpdateOptions.Generatorname,
+    DataSet.UpdateOptions.UpdateTableName, DataSet.Tag);
 
-  TFDMemTable(DataSet).CommitUpdates;
+  DataSet.CommitUpdates;
 end;
 
 function TVBBaseDM.UpdatesPending(DataSetArray: TDataSetArray): Boolean;
@@ -373,43 +410,50 @@ end;
 //  end;
 //end;
 
-procedure TVBBaseDM.ApplyUpdates(DataSetArray: TDataSetArray; GeneratorName, TableName: string; ScriptID: Integer);
+procedure TVBBaseDM.ApplyUpdates(DataSet: TFDMemTable; DataSetArray: TDataSetArray; GeneratorName, TableName: string; ScriptID: Integer);
 const
   ERROR_MESSAGE = 'One or more erors occurred in posting data to table %s with error message.';
 
 var
   DeltaList: TFDJSONDeltas;
-  Response: TStringList;
+  ResponseList: TStringList;
   ReplyMessage: string;
 begin
-  Response := RUtils.CreateStringList(PIPE, DOUBLE_QUOTE);
+  ResponseList := RUtils.CreateStringList(PIPE, DOUBLE_QUOTE);
   ReplyMessage := '';
   DeltaList := GetDelta(DataSetArray);
 
   try
-    Response.DelimitedText := FClient.ApplyDataUpdates(DeltaList, ReplyMessage, GeneratorName, TableName, ScriptID);
+    ResponseList.DelimitedText := FClient.ApplyDataUpdates(DeltaList, ReplyMessage, GeneratorName, TableName, ScriptID);
 
-    if Sametext(Response.Values['RESPONSE'], 'ERROR') then
+    if Sametext(ResponseList.Values['RESPONSE'], 'ERROR') then
     begin
       FServerErrorMsg := Format(ERROR_MESSAGE, [TableName]) + CRLF + CRLF +
-        Response.Values['ERROR_MESSAGE'];
+        ResponseList.Values['ERROR_MESSAGE'];
+
+      if AnsiContainsText(ResponseList.Values['ERROR_MESSAGE'], 'Attempt to store duplicate value') then
+      begin
+//DuplicateMessage :=  Format(DUPLICATE_MESSAGE, [Tablename,
+
+//  DUPLICATE_MESSAGE = 'Attempt to store duplicate value in table %s. Duplicate value: %s not allowed.';
+
+      end;
+
+//      if DataSet.State in [dsEdit, dsInsert] then
+//        DataSet.Cancel;
+
+      DataSet.Delete;
 
       raise EServerError.Create(FServerErrorMsg);
-
-//      Beep;
-//      DisplayMsg(
-//        Application.Title,
-//        'VB Remote Server Error',
-//        'One or more errors occurred when trying to update the VB database.' + CRLF + CRLF +
-//        'Error message from server' + CRLF +
-//        Response.Values['ERROR_MESSAGE'],
-//        mtError,
-//        [mbOK]
-//        );
-
+    end
+    else
+    begin
+      ResponseList.Clear;
+      ResponseList.DelimitedText := ReplyMessage;
+      FLastID := StrToInt(ResponseList.Values['LAST_ID']);
     end;
   finally
-    Response.Free;
+    ResponseList.Free;
   end;
 end;
 
@@ -423,12 +467,13 @@ begin
   if DataSet.FieldByName('BILLABLE').AsInteger = 1 then
   begin
     if DataSet.FieldByName('RATE_UNIT_ID').AsInteger = 1 then
-      DataSet.FieldByName('ITEM_VALUE').AsFloat :=
-        DataSet.FieldByName('TIME_SPENT').AsFloat / 60 *
-        DataSet.FieldByName('ACTUAL_RATE').AsFloat
-    else
-      DataSet.FieldByName('ITEM_VALUE').AsFloat :=
-        DataSet.FieldByName('ACTUAL_RATE').AsFloat;
+      if DataSet.FieldByName('ACTUAL_RATE').AsFloat <> 0 then
+        DataSet.FieldByName('ITEM_VALUE').AsFloat :=
+          DataSet.FieldByName('TIME_SPENT').AsFloat / 60 *
+          DataSet.FieldByName('ACTUAL_RATE').AsFloat
+      else
+        DataSet.FieldByName('ITEM_VALUE').AsFloat :=
+          DataSet.FieldByName('ACTUAL_RATE').AsFloat;
   end
   else
     DataSet.FieldByName('ITEM_VALUE').AsFloat := 0;
@@ -456,12 +501,12 @@ end;
 
 procedure TVBBaseDM.CancelUpdates(DataSetArray: TDataSetArray);
 begin
-//for var
-//  I := 0 to Length(DataSetArray) - 1 do
-//  begin
-//    if DataSetArray[I].UpdatesPending then
-//      DataSetArray[I].CancelUpdates;
-//  end;
+  //for var
+  //  I := 0 to Length(DataSetArray) - 1 do
+  //  begin
+  //    if DataSetArray[I].UpdatesPending then
+  //      DataSetArray[I].CancelUpdates;
+  //  end;
 end;
 
 function TVBBaseDM.CopyRecord(DataSet: TFDMemTable): OleVariant;
@@ -493,22 +538,33 @@ begin
 end;
 
 function TVBBaseDM.ExecuteSQLCommand(Request: string): string;
-//var
-//  Response: string;
+var
+  ResponseList: TStringList;
 begin
-//  Response := '';
-  Result := FClient.ExecuteSQLCommand(Request);
+  ResponseList := RUtils.CreateStringList(PIPE, DOUBLE_QUOTE);
+
+  try
+    ResponseList.DelimitedText := FClient.ExecuteSQLCommand(Request);
+    Result := 'SUCCESS';
+
+    if ResponseList.Values['RESPONSE'] = 'ERROR' then
+      Result := ResponseList.Values['ERROR_MESSAGE'];
+  finally
+    ResponseList.Free;
+  end;
+
+//  Result := FClient.ExecuteSQLCommand(Request);
 end;
 
-function TVBBaseDM.ExecuteStoredProcedure(ProcedureName, ParameterList: string): string;
+function TVBBaseDM.ExecuteStoredProcedure(ProcedureName, ParameterList, ParameterValues, DelimChar: string): string;
 begin
-  Result := FClient.ExecuteStoredProcedure(ProcedureName, ParameterList);
+  Result := FClient.ExecuteStoredProcedure(ProcedureName, ParameterList, ParameterValues, FOutputValues);
 end;
 
 function TVBBaseDM.GetDateOrder(const DateFormat: string): TDateOrder;
 begin
   Result := doMDY;
-var
+  var
   I := Low(string);
   while I <= High(DateFormat) do
   begin
@@ -558,9 +614,9 @@ function TVBBaseDM.CheckForUpdates(AppID: Integer; AppName: string): Boolean;
 var
   VersionInfo: TStringList;
   Request, Response: string;
-//  CurrentAppFileTimestamp: TDateTime;
+  //  CurrentAppFileTimestamp: TDateTime;
   UpdateFile: Boolean;
-//  Iteration: Extended;
+  //  Iteration: Extended;
 begin
   FAppID := AppID;
   FAppName := AppName;
@@ -583,8 +639,8 @@ begin
   if ProgressFrm = nil then
     ProgressFrm := TProgressFrm.Create(nil);
   ProgressFrm.FormStyle := fsStayOnTop;
-//  ProgressFrm.prgDownload.Style.LookAndFeel.NativeStyle := True;
-//  ProgressFrm.prgDownload.Properties.BeginColor := $F0CAA6; //clSkyBlue;
+  //  ProgressFrm.prgDownload.Style.LookAndFeel.NativeStyle := True;
+  //  ProgressFrm.prgDownload.Properties.BeginColor := $F0CAA6; //clSkyBlue;
   ProgressFrm.Update;
   ProgressFrm.Show;
 
@@ -598,7 +654,7 @@ begin
       SendMessage(ProgressFrm.Handle, WM_DOWNLOAD_CAPTION, DWORD(PChar('Preparing downloads. Please wait...')), 0);
 
       Inc(FCounter);
-//      Iteration := FCounter / FFilesToUpdate * 100;
+      //      Iteration := FCounter / FFilesToUpdate * 100;
       FSourceFolder := RUtils.AddChar(cdsRepository.FieldByName('SOURCE_FOLDER').AsString, '\', rpEnd);
       FDestFolder := RUtils.AddChar(cdsRepository.FieldByName('DEST_FOLDER').AsString, '\', rpEnd);
       FFileName := cdsRepository.FieldByName('FILE_NAME').AsString;
@@ -618,7 +674,7 @@ begin
         if not (UpdateFile)
           and (IntegerToBoolean(cdsRepository.FieldByName('DELETE_FILE').AsInteger)) then
           TFile.Delete(FFullFileName)
-        // If this file has been marked as updateable then download and replace it.
+            // If this file has been marked as updateable then download and replace it.
         else if IntegerToBoolean(cdsRepository.FieldByName('UPDATE_FILE').AsInteger) then
           UpdateFile := FoundNewVersion
         else
@@ -658,7 +714,7 @@ begin
 
   BufSize := 1024;
   MemStream := TMemoryStream.Create;
-//  TheFileStream :=  TStream.Create;
+  //  TheFileStream :=  TStream.Create;
   GetMem(Buffer, BufSize);
   Response := '';
   StreamSize := 0;
@@ -676,7 +732,7 @@ begin
 
     if (StreamSize <> 0) then
     begin
-//        filename := 'download.fil';
+      //        filename := 'download.fil';
 
       repeat
         BytesRead := TheFileStream.Read(Pointer(Buffer)^, BufSize);
@@ -688,8 +744,8 @@ begin
           Progress := StrToFloat(TotalBytesRead.ToString) / StrToFloat(StreamSize.ToString) * 100;
           SendMessage(ProgressFrm.Handle, WM_DOWNLOAD_PROGRESS, DWORD(PChar(FloatToStr(Progress))), 0);
           Application.ProcessMessages;
-//          SendMessage(ProgressFrm.Handle, WM_DOWNLOAD_CAPTION, DWORD(PChar('CAPTION=Downloading: ' +
-//            FFileName + ' (' + FCounter.ToString + ' of ' + FFilesToUpdate.ToString + ')' + '|PROGRESS=' + FloatToStr(Progress))), 0);
+          //          SendMessage(ProgressFrm.Handle, WM_DOWNLOAD_CAPTION, DWORD(PChar('CAPTION=Downloading: ' +
+          //            FFileName + ' (' + FCounter.ToString + ' of ' + FFilesToUpdate.ToString + ')' + '|PROGRESS=' + FloatToStr(Progress))), 0);
         end;
       until (BytesRead < BufSize);
 
@@ -720,9 +776,9 @@ var
   aYear, aMonth, aDay, aHour, aMin, aSec, aMSec: Word;
   TheDate: Double;
 begin
-//  FileAge(FFullFileName, FNewFileTimeStamp);
-//  FNewFileTimestamp := VarToDateTime(FNewFileTimeStampString);
-  // Get the handle of the file.
+  //  FileAge(FFullFileName, FNewFileTimeStamp);
+  //  FNewFileTimestamp := VarToDateTime(FNewFileTimeStampString);
+    // Get the handle of the file.
   TargetFileHandle := FileOpen(FDestFolder + FFileName, fmOpenReadWrite);
   // Decode timestamp and resolve to its constituent parts.
   DecodeDateTime(FNewFileTimeStamp, aYear, aMonth, aDay, aHour, aMin, aSec, aMSec);
@@ -739,7 +795,7 @@ begin
   if aMin = 59 then
     aMin := 0;
 
-        // If handle was successfully generated then reset the timestamp
+  // If handle was successfully generated then reset the timestamp
   if TargetFileHandle > 0 then
   begin
     FileSetDate(TargetFileHandle, DateTimeToFileDate(TheDate + (aHour / 24) + (aMin / (24 * 60)) + (aSec / 24 / 60 / 60)));
@@ -747,10 +803,10 @@ begin
   // Close the file
   FileClose(TargetFileHandle);
 
-//  // Copy the newly downloaded app to its actual location.
-//  TFile.Copy(TempFolder + APP_NAME, AppFileName);
-//  while not TFile.Exists(AppFileName) do
-//    Application.ProcessMessages;
+  //  // Copy the newly downloaded app to its actual location.
+  //  TFile.Copy(TempFolder + APP_NAME, AppFileName);
+  //  while not TFile.Exists(AppFileName) do
+  //    Application.ProcessMessages;
 end;
 
 procedure TVBBaseDM.SetConnectionProperties;
@@ -766,7 +822,7 @@ begin
     if not RegKey.ValueExists('Host Name') then
       RegKey.WriteString('Host Name', 'localhost');
 
-    {$IFDEF DEBUG}
+{$IFDEF DEBUG}
     if not RegKey.ValueExists(VB_SHELL_DEV_TCP_KEY_NAME) then
       RegKey.WriteString(VB_SHELL_DEV_TCP_KEY_NAME, VB_SHELL_DEV_TCP_PORT);
 
@@ -774,15 +830,15 @@ begin
       RegKey.WriteString(VB_SHELL_DEV_HTTP_KEY_NAME, VB_SHELL_DEV_HTTP_PORT);
 
     Port := RegKey.ReadString(VB_SHELL_DEV_TCP_KEY_NAME);
-    {$ELSE}
-    if not RegKey.ValueExists(VB_SHELLX_TCP_KEY_NAME) then
-      RegKey.WriteString(VB_SHELLX_TCP_KEY_NAME, VB_SHELLX_TCP_PORT);
+{$ELSE}
+    if not RegKey.ValueExists(VB_SHELL_TCP_KEY_NAME) then
+      RegKey.WriteString(VB_SHELL_TCP_KEY_NAME, VB_SHELL_TCP_PORT);
 
-    if not RegKey.ValueExists(VB_SHELLX_HTTP_KEY_NAME) then
-      RegKey.WriteString(VB_SHELLX_HTTP_KEY_NAME, VB_SHELLX_HTTP_PORT);
+    if not RegKey.ValueExists(VB_SHELL_HTTP_KEY_NAME) then
+      RegKey.WriteString(VB_SHELL_HTTP_KEY_NAME, VB_SHELL_HTTP_PORT);
 
-    Port := RegKey.ReadString(VB_SHELLX_TCP_KEY_NAME);
-    {$ENDIF}
+    Port := RegKey.ReadString(VB_SHELL_TCP_KEY_NAME);
+{$ENDIF}
 
     sqlConnection.Params.Values['DriverName'] := 'DataSnap';
     sqlConnection.Params.Values['DatasnapContext'] := 'DataSnap/';
@@ -794,45 +850,40 @@ begin
     RegKey.Free;
   end;
 
-//  try
-//    if not RegKey.ValueExists('Host Name') then
-//      RegKey.WriteString('Host Name', 'localhost');
-//
-//{$IFDEF DEBUG}
-//    if not RegKey.ValueExists(VB_SHELL_DEV_TCP_KEY_NAME) then
-//      RegKey.WriteString(VB_SHELL_DEV_TCP_KEY_NAME, VB_SHELL_DEV_TCP_PORT);
-//
-//    if not RegKey.ValueExists(VB_SHELL_DEV_HTTP_KEY_NAME) then
-//      RegKey.WriteString(VB_SHELL_DEV_HTTP_KEY_NAME, VB_SHELL_DEV_HTTP_PORT);
-//
-//    sqlConnection.Params.Values['Port'] := RegKey.ReadString(VB_SHELL_DEV_TCP_KEY_NAME);
-//{$ELSE}
-//    if not RegKey.ValueExists(VB_SHELLX_TCP_KEY_NAME) then
-//      RegKey.WriteString(VB_SHELLX_TCP_KEY_NAME, VB_SHELLX_TCP_PORT);
-//
-//    if not RegKey.ValueExists(VB_SHELLX_HTTP_KEY_NAME) then
-//      RegKey.WriteString(VB_SHELLX_HTTP_KEY_NAME, VB_SHELLX_HTTP_PORT);
-//
-//    sqlConnection.Params.Values['Port'] := RegKey.ReadString(VB_SHELLX_TCP_KEY_NAME);
-//{$ENDIF}
-//
-//    sqlConnection.Params.Values['DatasnapContext'] := 'DataSnap/';
-//    sqlConnection.Params.Values['CommunicationProtocol'] := 'tcp/ip';
-////  sqlConnection.Params.Values['HostName'] := 'localhost';
-//
-////  if ReleaseVersion then
-//    sqlConnection.Params.Values['HostName'] := RegKey.ReadString('Host Name');
-//    sqlConnection.Open;
-////    FClient := TVBServerMethodsClient.Create(VBBaseDM.sqlConnection.DBXConnection);
-//    RegKey.CloseKey;
-//  finally
-//    RegKey.Free;
-//  end;
-end;
-
-function TVBBaseDM.EchoTheString(Request: string; var Response: string): string;
-begin
-  Result := FClient.EchoString(Request, Response);
+  //  try
+  //    if not RegKey.ValueExists('Host Name') then
+  //      RegKey.WriteString('Host Name', 'localhost');
+  //
+  //{$IFDEF DEBUG}
+  //    if not RegKey.ValueExists(VB_SHELL_DEV_TCP_KEY_NAME) then
+  //      RegKey.WriteString(VB_SHELL_DEV_TCP_KEY_NAME, VB_SHELL_DEV_TCP_PORT);
+  //
+  //    if not RegKey.ValueExists(VB_SHELL_DEV_HTTP_KEY_NAME) then
+  //      RegKey.WriteString(VB_SHELL_DEV_HTTP_KEY_NAME, VB_SHELL_DEV_HTTP_PORT);
+  //
+  //    sqlConnection.Params.Values['Port'] := RegKey.ReadString(VB_SHELL_DEV_TCP_KEY_NAME);
+  //{$ELSE}
+  //    if not RegKey.ValueExists(VB_SHELLX_TCP_KEY_NAME) then
+  //      RegKey.WriteString(VB_SHELLX_TCP_KEY_NAME, VB_SHELLX_TCP_PORT);
+  //
+  //    if not RegKey.ValueExists(VB_SHELLX_HTTP_KEY_NAME) then
+  //      RegKey.WriteString(VB_SHELLX_HTTP_KEY_NAME, VB_SHELLX_HTTP_PORT);
+  //
+  //    sqlConnection.Params.Values['Port'] := RegKey.ReadString(VB_SHELLX_TCP_KEY_NAME);
+  //{$ENDIF}
+  //
+  //    sqlConnection.Params.Values['DatasnapContext'] := 'DataSnap/';
+  //    sqlConnection.Params.Values['CommunicationProtocol'] := 'tcp/ip';
+  ////  sqlConnection.Params.Values['HostName'] := 'localhost';
+  //
+  ////  if ReleaseVersion then
+  //    sqlConnection.Params.Values['HostName'] := RegKey.ReadString('Host Name');
+  //    sqlConnection.Open;
+  ////    FClient := TVBServerMethodsClient.Create(VBBaseDM.sqlConnection.DBXConnection);
+  //    RegKey.CloseKey;
+  //  finally
+  //    RegKey.Free;
+  //  end;
 end;
 
 procedure TVBBaseDM.BuildInsertStatement(TagValue: Integer; var FieldList,
@@ -1069,7 +1120,7 @@ begin
           'SALUTATION_ID, ' +
           'FIRST_NAME, ' +
           'LAST_NAME, ' +
-          'MIDDLE_NAME, ' +
+          'OTHER_NAME, ' +
           'TAX_NO, ' +
           'MOBILE_PHONE, ' +
           'EMAIL_ADDRESS';
@@ -1079,7 +1130,7 @@ begin
           IntToStr(DataSet.FieldByName('SALUTATION_ID').AsInteger) + ', ' +
           AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
           AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''') + ', ' +
-          AnsiQuotedStr(DataSet.FieldByName('MIDDLE_NAME').AsString, '''') + ', ' +
+          AnsiQuotedStr(DataSet.FieldByName('OTHER_NAME').AsString, '''') + ', ' +
           AnsiQuotedStr(DataSet.FieldByName('TAX_NO').AsString, '''') + ', ' +
           AnsiQuotedStr(DataSet.FieldByName('MOBILE_PHONE').AsString, '''') + ', ' +
           AnsiQuotedStr(DataSet.FieldByName('EMAIL_ADDRESS').AsString, '''');
@@ -1397,7 +1448,7 @@ begin
           'SALUTATION_ID = ' + IntToStr(DataSet.FieldByName('SALUTATION_ID').AsInteger) + ', ' +
           'FIRST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('FIRST_NAME').AsString, '''') + ', ' +
           'LAST_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('LAST_NAME').AsString, '''') + ', ' +
-          'MIDDLE_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('MIDDLE_NAME').AsString, '''') + ', ' +
+          'OTHER_NAME = ' + AnsiQuotedStr(DataSet.FieldByName('OTHER_NAME').AsString, '''') + ', ' +
           'TAX_NO = ' + AnsiQuotedStr(DataSet.FieldByName('TAX_NO').AsString, '''') + ', ' +
           'MOBILE_PHONE = ' + AnsiQuotedStr(DataSet.FieldByName('MOBILE_PHONE').AsString, '''') + ', ' +
           'EMAIL_ADDRESS = ' + AnsiQuotedStr(DataSet.FieldByName('EMAIL_ADDRESS').AsString, '''');
@@ -1501,4 +1552,6 @@ begin
 end;
 
 end.
+
+
 
